@@ -61,26 +61,28 @@ export function UpdateNotifier() {
       }
     };
 
-    // First check after 20 seconds
+    // Initial fast check after 3 seconds
     const initialTimer = setTimeout(() => {
       checkForUpdates();
-    }, 20000);
+    }, 3000);
 
-    // Periodic check every 25 seconds
+    // Fast check every 5 seconds to catch new deploys instantly
     const interval = setInterval(() => {
       checkForUpdates();
-    }, 25000);
+    }, 5000);
 
-    // Also check when browser tab gains focus
-    const handleFocus = () => {
+    // Also check on user interaction and tab focus
+    const handleActivity = () => {
       checkForUpdates();
     };
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener('focus', handleActivity);
+    window.addEventListener('click', handleActivity, { once: false });
 
     return () => {
       clearTimeout(initialTimer);
       clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('focus', handleActivity);
+      window.removeEventListener('click', handleActivity);
     };
   }, []);
 
@@ -98,38 +100,39 @@ export function UpdateNotifier() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed bottom-5 left-4 md:left-6 z-50 max-w-sm w-[calc(100vw-2rem)] bg-slate-900/95 text-white p-4 rounded-2xl shadow-2xl backdrop-blur-md border border-slate-700/60"
+        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] md:bottom-6 md:left-6 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-auto sm:min-w-[340px] bg-slate-900/95 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xl backdrop-blur-md border border-slate-700/60 touch-manipulation"
       >
         <div className="flex items-start gap-3">
           <div className="p-2.5 bg-blue-600/30 text-blue-400 rounded-xl border border-blue-500/30 flex-shrink-0 mt-0.5">
             <Sparkles className="w-5 h-5 text-blue-400 animate-pulse" />
           </div>
 
-          <div className="flex-1 min-w-0 pr-1">
-            <h4 className="font-semibold text-sm text-white flex items-center gap-1.5">
+          <div className="flex-1 min-w-0 pr-0.5">
+            <h4 className="font-semibold text-sm text-white flex items-center gap-1.5 flex-wrap">
               <span>¡Actualización disponible!</span>
               <span className="inline-flex bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-emerald-500/30">
                 NUEVO
               </span>
             </h4>
             <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-              Se detectaron cambios en el sitio web. Presiona para refrescar.
+              Se detectaron cambios en la tienda. Presiona para refrescar.
             </p>
 
             <div className="mt-3 flex items-center gap-2">
               <button
                 onClick={handleReload}
                 disabled={isRefreshing}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-medium text-xs py-2 px-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-70 cursor-pointer"
+                className="flex-1 min-h-[42px] sm:min-h-[38px] bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 active:from-blue-700 active:to-emerald-700 text-white font-medium text-xs px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-md active:scale-95 disabled:opacity-70 cursor-pointer touch-manipulation"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span>{isRefreshing ? 'Actualizando...' : 'Actualizar ahora'}</span>
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="font-semibold">{isRefreshing ? 'Actualizando...' : 'Actualizar ahora'}</span>
               </button>
 
               <button
                 onClick={() => setDismissed(true)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                className="min-h-[42px] min-w-[42px] sm:min-h-[38px] sm:min-w-[38px] flex items-center justify-center p-2 text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 rounded-xl transition-colors cursor-pointer touch-manipulation"
                 title="Cerrar aviso"
+                aria-label="Cerrar aviso de actualización"
               >
                 <X className="w-4 h-4" />
               </button>
