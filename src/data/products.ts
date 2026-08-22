@@ -110,11 +110,11 @@ export const products: Product[] = [
     name: 'Cloro Puro x 5 Lts',
     category: 'Productos de Limpieza',
     description: 'Cloro puro de máxima concentración para desinfección profunda y piletas.',
-    imageUrl: 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/cloro.png',
     basePrice: 7000,
     unitType: 'litros',
     options: [
-      { label: 'Bidón x 5 Lts', price: 7000 }
+      { label: 'Cloro x 5 Lts', price: 7000 }
     ]
   },
   {
@@ -126,9 +126,9 @@ export const products: Product[] = [
     basePrice: 5100,
     unitType: 'litros',
     options: [
-      { label: 'Suavizante blanco', price: 5200 },
-      { label: 'Suavizante celeste', price: 5200 },
-      { label: 'Suavizante lila', price: 5200 }
+      { label: 'Suavizante blanco x5 lts', price: 5200 },
+      { label: 'Suavizante celeste x5 lts', price: 5200 },
+      { label: 'Suavizante lila x5 lts', price: 5200 }
     ]
   },
   {
