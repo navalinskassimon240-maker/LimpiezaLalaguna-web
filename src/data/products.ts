@@ -10,9 +10,9 @@ import { Product } from '../types';
  * 📋 GUÍA PASO A PASO PARA MODIFICAR EL CÓDIGO:
  * 
  * 🖼️ ¿CÓMO PONER IMÁGENES DESDE TU CARPETA public/IMG?
- *    - Pones la foto de tu producto adentro de la carpeta `public/IMG/` (ejemplo: `jabon-5l.jpg` o `cloro.png`).
- *    - Luego en la propiedad `imageUrl` pon simplemente la ruta empezando con `/IMG/`:
- *      👉 `imageUrl: '/IMG/jabon-5l.jpg'`
+ *    - Pones la foto de tu producto adentro de la carpeta `public/IMG/` (ejemplo: `suavizante.png`).
+ *    - NO escribas 'public', escribí directamente la ruta con barra `/IMG/`:
+ *      👉 `imageUrl: '/IMG/suavizante.png'`
  *    - O si quieres usar una imagen de internet, pon el link directo:
  *      👉 `imageUrl: 'https://images.unsplash.com/...'`
  * 
