@@ -212,7 +212,7 @@ export const products: Product[] = [
     name: 'Mopa de Algodón',
     category: 'Escobillón y Mopas',
     description: 'Mopa de hilado de algodón súper absorbente para limpieza de todo tipo de pisos.',
-    imageUrl: 'https://images.unsplash.com/photo-1527515862127-a4fc05baf7a5?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/mopa.png',
     basePrice: 4200,
     unitType: 'unidades',
     options: [
@@ -224,7 +224,7 @@ export const products: Product[] = [
     name: 'Mopa Sintética',
     category: 'Escobillón y Mopas',
     description: 'Mopa sintética flecos amarillos de alta durabilidad y escurrido rápido.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/mopaAmarilla.png',
     basePrice: 4800,
     unitType: 'unidades',
     options: [
@@ -236,7 +236,7 @@ export const products: Product[] = [
     name: 'Secador Piragua',
     category: 'Escobillón y Mopas',
     description: 'Secador de piso plástico reforzado modelo piragua con goma doble de excelente arrastre.',
-    imageUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/secador.png',
     basePrice: 3200,
     unitType: 'unidades',
     options: [
@@ -248,7 +248,7 @@ export const products: Product[] = [
     name: 'Escobillón Recto',
     category: 'Escobillón y Mopas',
     description: 'Escobillón recto con cerdas suaves para interiores y pisos delicados.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/escobillonRecto.png',
     basePrice: 3400,
     unitType: 'unidades',
     options: [
@@ -260,7 +260,7 @@ export const products: Product[] = [
     name: 'Escobillón Curvo Bicolor',
     category: 'Escobillón y Mopas',
     description: 'Escobillón curvo bicolor ergonómico para barrer esquinas y zócalos fácilmente.',
-    imageUrl: 'https://images.unsplash.com/photo-1527515862127-a4fc05baf7a5?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/escobillonCurvo.png',
     basePrice: 4200,
     unitType: 'unidades',
     options: [
@@ -272,7 +272,7 @@ export const products: Product[] = [
     name: 'Escobillón Laqueado',
     category: 'Escobillón y Mopas',
     description: 'Escobillón con base de madera laqueada y cerdas finas tupidas de gran calidad.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/escobillonLaqueado.png',
     basePrice: 6300,
     unitType: 'unidades',
     options: [
@@ -284,7 +284,7 @@ export const products: Product[] = [
     name: 'Escobillón Andén 1 Mt',
     category: 'Escobillón y Mopas',
     description: 'Escobillón industrial de andén de 1 metro para veredas, galpones y grandes superficies.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/anden1MT.png',
     basePrice: 30000,
     unitType: 'unidades',
     options: [
@@ -296,7 +296,7 @@ export const products: Product[] = [
     name: 'Barrendero 40 cm',
     category: 'Escobillón y Mopas',
     description: 'Cepillo barrendero reforzado de 40 cm ideal para veredas, patios y cemento.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/barrendero40CM.png',
     basePrice: 7100,
     unitType: 'unidades',
     options: [
@@ -308,7 +308,7 @@ export const products: Product[] = [
     name: 'Barrendero x 60 cm',
     category: 'Escobillón y Mopas',
     description: 'Cepillo barrendero reforzado de 60 cm para veredas y barrido de alto rendimiento.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/barrendero60CM.png',
     basePrice: 18000,
     unitType: 'unidades',
     options: [
@@ -320,7 +320,7 @@ export const products: Product[] = [
     name: 'Barrendero Reforzado',
     category: 'Escobillón y Mopas',
     description: 'Barrendero plástico extra resistente para trabajo pesado.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/BarrenderoReforsado.png',
     basePrice: 18400,
     unitType: 'unidades',
     options: [
@@ -332,7 +332,7 @@ export const products: Product[] = [
     name: 'Escobón Sina',
     category: 'Escobillón y Mopas',
     description: 'Escobón tipo Sina para exteriores, hojas y suciedad gruesa.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/escobillonSina.png',
     basePrice: 5100,
     unitType: 'unidades',
     options: [
@@ -344,7 +344,7 @@ export const products: Product[] = [
     name: 'Escoba Sina Cerda Dura',
     category: 'Escobillón y Mopas',
     description: 'Escoba Sina con cerdas duras para fregar pisos y barrer polvo rebelde.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/EscobaSinaCerdaDura.png',
     basePrice: 4000,
     unitType: 'unidades',
     options: [
@@ -356,7 +356,7 @@ export const products: Product[] = [
     name: 'Cepillo Piso Cerdas Duras',
     category: 'Escobillón y Mopas',
     description: 'Cepillo para fregar pisos, juntas y baldosas exteriores.',
-    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/EscobaPisoCerdasDuras.png',
     basePrice: 3600,
     unitType: 'unidades',
     options: [
@@ -368,7 +368,7 @@ export const products: Product[] = [
     name: 'Cepillo Lava Coche',
     category: 'Escobillón y Mopas',
     description: 'Cepillo con cerdas súper suaves especiales para el lavado de autos sin rayar carrocería.',
-    imageUrl: 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/CepilloCoche.png',
     basePrice: 4200,
     unitType: 'unidades',
     options: [
