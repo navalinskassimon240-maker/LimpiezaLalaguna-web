@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: var(--theme-primary, #2563eb);
+  --color-brand-hover: var(--theme-hover, #1d4ed8);
+  --color-brand-light: var(--theme-light, #dbeafe);
+  --color-brand-gradient: var(--theme-gradient, #6366f1);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}

@@ -1,0 +1,4 @@
+Coloca aquí tu archivo "video.mp4" (debe llamarse exactamente así y estar dentro de esta carpeta MP4).
+
+La ruta final debe ser: public/MP4/video.mp4
+El reproductor lo detectará automáticamente y lo usará de fondo.

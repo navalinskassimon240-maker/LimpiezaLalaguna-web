@@ -1,0 +1,6 @@
+{
+  "name": "LimpiezaLalaguna",
+  "description": "Sitio web y catálogo de productos y servicios de limpieza La Laguna con paleta azul y verde.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
