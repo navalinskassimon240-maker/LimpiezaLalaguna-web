@@ -69,7 +69,7 @@ export const products: Product[] = [
     name: 'Combo Ahorro x 10 Lts',
     category: 'Combos y Promos',
     description: 'Combo ahorro especial para el lavado de ropa. Incluye bidones de 5L listos para usar.',
-    imageUrl: 'https://images.unsplash.com/photo-1585836696096-7bbcfd703cb8?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/ComboX10',
     basePrice: 8500,
     unitType: 'unidades',
     includes: [
@@ -86,7 +86,7 @@ export const products: Product[] = [
     name: 'Combo Ahorro x 25 Lts',
     category: 'Combos y Promos',
     description: 'El combo más completo para la limpieza y desinfección total. Incluye los 5 bidones de 5 litros.',
-    imageUrl: 'https://images.unsplash.com/photo-1584820927498-cafe4c23ccdb?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/ComboX25',
     basePrice: 22000,
     unitType: 'unidades',
     includes: [
