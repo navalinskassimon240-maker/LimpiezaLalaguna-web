@@ -5,7 +5,7 @@ interface CartContextType {
   cartItems: CartItem[];
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
-  addToCart: (product: Product, option: ProductOption) => void;
+  addToCart: (product: Product, option: ProductOption, quantity?: number) => void;
   removeFromCart: (cartItemId: string) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
   cartTotal: number;
@@ -18,20 +18,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const addToCart = (product: Product, option: ProductOption) => {
+  const addToCart = (product: Product, option: ProductOption, quantityToAdd: number = 1) => {
     const cartItemId = `${product.id}-${option.label}`;
     setCartItems(prev => {
       const existing = prev.find(item => item.cartItemId === cartItemId);
       if (existing) {
         return prev.map(item => 
           item.cartItemId === cartItemId 
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + quantityToAdd }
             : item
         );
       }
       
       const { options, ...productData } = product;
-      return [...prev, { ...productData, cartItemId, selectedOption: option, quantity: 1, price: option.price }];
+      return [...prev, { ...productData, cartItemId, selectedOption: option, quantity: quantityToAdd, price: option.price }];
     });
     setIsCartOpen(true);
   };

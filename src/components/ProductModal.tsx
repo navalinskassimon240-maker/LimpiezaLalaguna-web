@@ -82,16 +82,14 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
     if (isInvalidCustom) return;
     
     if (isCombo) {
-      // Add combo as a full pack
+      // Add combo with unit price and comboCount as item quantity
       const comboOption: ProductOption = {
-        label: comboCount === 1 
-          ? `Combo Completo (${product.includes?.join(' + ') || 'Pack'})` 
-          : `${comboCount}x Combos Completos (${product.includes?.join(' + ') || 'Pack'})`,
-        price: product.basePrice * comboCount
+        label: product.options[0]?.label || `Combo Completo (${product.includes?.join(' + ') || 'Pack'})`,
+        price: product.basePrice
       };
-      addToCart(product, comboOption);
+      addToCart(product, comboOption, comboCount);
     } else {
-      addToCart(product, selectedOption);
+      addToCart(product, selectedOption, 1);
     }
 
     setIsAdded(true);
