@@ -8,19 +8,23 @@ export function UpdateNotifier() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    // Collect initially loaded JS/CSS asset paths
-    const getLoadedAssets = (): Set<string> => {
+    // Collect initially loaded JS/CSS asset paths & script signatures
+    const getInitialFingerprint = () => {
       const assets = new Set<string>();
-      document.querySelectorAll('script[src], link[rel="stylesheet"]').forEach((el) => {
+      let scriptSignature = '';
+
+      document.querySelectorAll('script, link[rel="stylesheet"]').forEach((el) => {
         const src = el.getAttribute('src') || el.getAttribute('href');
         if (src) {
           assets.add(src.split('?')[0]);
+          scriptSignature += src;
         }
       });
-      return assets;
+
+      return { assets, scriptSignature };
     };
 
-    const initialAssets = getLoadedAssets();
+    const initialData = getInitialFingerprint();
 
     const checkForUpdates = async () => {
       try {
@@ -37,23 +41,31 @@ export function UpdateNotifier() {
 
         const html = await res.text();
         
-        // Extract script and link hrefs from fetched HTML
-        const assetRegex = /(?:src|href)=["']([^"']+\.(?:js|css))["']/g;
+        let updateDetected = false;
+
+        // 1. Check for new asset paths in scripts/links
+        const assetRegex = /(?:src|href)=["']?([^"'\s>]+?\.(?:js|css))/gi;
         let match: RegExpExecArray | null;
-        let foundNewAsset = false;
 
         while ((match = assetRegex.exec(html)) !== null) {
           const assetUrl = match[1].split('?')[0];
-          // If we find an asset in the fetched HTML that wasn't in our initial DOM assets
-          if (assetUrl && !initialAssets.has(assetUrl)) {
+          if (assetUrl && !initialData.assets.has(assetUrl)) {
             if (assetUrl.includes('/assets/') || assetUrl.includes('.js') || assetUrl.includes('.css')) {
-              foundNewAsset = true;
+              updateDetected = true;
               break;
             }
           }
         }
 
-        if (foundNewAsset) {
+        // 2. Fallback: check if script tag contents or main index fingerprints changed
+        if (!updateDetected && initialData.scriptSignature) {
+          const fetchedScripts = (html.match(/<script[^>]*src=["']?([^"'\s>]+)/gi) || []).join('');
+          if (fetchedScripts && fetchedScripts !== initialData.scriptSignature) {
+            updateDetected = true;
+          }
+        }
+
+        if (updateDetected) {
           setUpdateAvailable(true);
         }
       } catch {
@@ -61,28 +73,26 @@ export function UpdateNotifier() {
       }
     };
 
-    // Initial fast check after 3 seconds
+    // Check every 15 seconds to give Cloudflare time to deploy changes
     const initialTimer = setTimeout(() => {
       checkForUpdates();
-    }, 3000);
+    }, 15000);
 
-    // Fast check every 5 seconds to catch new deploys instantly
+    // Periodic check every 15 seconds
     const interval = setInterval(() => {
       checkForUpdates();
-    }, 5000);
+    }, 15000);
 
-    // Also check on user interaction and tab focus
+    // Also check on tab focus
     const handleActivity = () => {
       checkForUpdates();
     };
     window.addEventListener('focus', handleActivity);
-    window.addEventListener('click', handleActivity, { once: false });
 
     return () => {
       clearTimeout(initialTimer);
       clearInterval(interval);
       window.removeEventListener('focus', handleActivity);
-      window.removeEventListener('click', handleActivity);
     };
   }, []);
 
@@ -96,48 +106,38 @@ export function UpdateNotifier() {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: 50, scale: 0.95 }}
+        initial={{ opacity: 0, y: -20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+        exit={{ opacity: 0, y: -20, scale: 0.95 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] md:bottom-6 md:left-6 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-auto sm:min-w-[340px] bg-slate-900/95 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xl backdrop-blur-md border border-slate-700/60 touch-manipulation"
+        className="fixed top-20 left-4 right-4 sm:top-auto sm:bottom-6 sm:left-6 sm:right-auto z-[60] sm:max-w-xs bg-slate-900/95 text-white py-2 px-3.5 rounded-full shadow-2xl backdrop-blur-xl border border-slate-700/80 touch-manipulation flex items-center justify-between gap-2.5 mx-auto sm:mx-0"
       >
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 bg-blue-600/30 text-blue-400 rounded-xl border border-blue-500/30 flex-shrink-0 mt-0.5">
-            <Sparkles className="w-5 h-5 text-blue-400 animate-pulse" />
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1 bg-blue-500/20 text-blue-400 rounded-full flex-shrink-0">
+            <Sparkles className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
           </div>
+          <span className="text-[12px] font-medium text-slate-200 truncate">
+            Nueva versión disponible
+          </span>
+        </div>
 
-          <div className="flex-1 min-w-0 pr-0.5">
-            <h4 className="font-semibold text-sm text-white flex items-center gap-1.5 flex-wrap">
-              <span>¡Actualización disponible!</span>
-              <span className="inline-flex bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-emerald-500/30">
-                NUEVO
-              </span>
-            </h4>
-            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-              Se detectaron cambios en la tienda. Presiona para refrescar.
-            </p>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button
+            onClick={handleReload}
+            disabled={isRefreshing}
+            className="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-[11px] font-semibold py-1 px-3 rounded-full transition-all duration-150 flex items-center gap-1 cursor-pointer disabled:opacity-70 active:scale-95 shadow-sm"
+          >
+            <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Cargando...' : 'Actualizar'}</span>
+          </button>
 
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                onClick={handleReload}
-                disabled={isRefreshing}
-                className="flex-1 min-h-[42px] sm:min-h-[38px] bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 active:from-blue-700 active:to-emerald-700 text-white font-medium text-xs px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-md active:scale-95 disabled:opacity-70 cursor-pointer touch-manipulation"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="font-semibold">{isRefreshing ? 'Actualizando...' : 'Actualizar ahora'}</span>
-              </button>
-
-              <button
-                onClick={() => setDismissed(true)}
-                className="min-h-[42px] min-w-[42px] sm:min-h-[38px] sm:min-w-[38px] flex items-center justify-center p-2 text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 rounded-xl transition-colors cursor-pointer touch-manipulation"
-                title="Cerrar aviso"
-                aria-label="Cerrar aviso de actualización"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={() => setDismissed(true)}
+            className="p-1 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Cerrar"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       </motion.div>
     </AnimatePresence>
