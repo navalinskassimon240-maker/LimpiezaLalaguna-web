@@ -48,7 +48,7 @@ export const siteConfig = {
     // Puedes colocar la ruta de una imagen dentro de la carpeta public (ej: "/IMG/logo.png" o "/img/logo.png")
     // o pegar la URL directa de internet (ej: "https://midominio.com/mi-logo.png").
     // Si lo dejas vacío (""), se usará la inicial letraIsotipo ("L").
-    logoUrl: "/IMG/logo.png",
+    logoUrl: "/IMG/logo2.png",
     
     // Eslogan corto o descripción de la marca
     eslogan: "Artículos de Limpieza, Químicos Sueltos y Perfumería",
