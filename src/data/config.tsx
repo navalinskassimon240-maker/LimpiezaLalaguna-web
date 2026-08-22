@@ -38,7 +38,7 @@ export const siteConfig = {
   // =======================================================================================
   marca: {
     // Nombre que aparece en la cabecera (dividido en 2 para poder darle colores distintos)
-    nombrePrincipal: "La",      // Parte 1 (en azul)
+    nombrePrincipal: "Limpieza",      // Parte 1 (en azul)
     nombreResaltado: "Lalaguna",      // Parte 2 (en verde esmeralda)
     
     // Letra o inicial que va dentro del ícono del logo (si no usas imagen)
