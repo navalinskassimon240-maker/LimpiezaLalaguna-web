@@ -8,25 +8,32 @@ export function UpdateNotifier() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    // Collect initially loaded JS/CSS asset paths & script signatures
-    const getInitialFingerprint = () => {
-      const assets = new Set<string>();
-      let scriptSignature = '';
-
-      document.querySelectorAll('script, link[rel="stylesheet"]').forEach((el) => {
-        const src = el.getAttribute('src') || el.getAttribute('href');
-        if (src) {
-          assets.add(src.split('?')[0]);
-          scriptSignature += src;
-        }
-      });
-
-      return { assets, scriptSignature };
+    // Extract filename (e.g. index-A123.js) from URL
+    const getFilename = (url: string | null) => {
+      if (!url) return '';
+      const path = url.split('?')[0].split('#')[0];
+      return path.split('/').pop() || '';
     };
 
-    const initialData = getInitialFingerprint();
+    // Collect initial JS/CSS filenames loaded in current DOM
+    const getInitialAssets = (): Set<string> => {
+      const filenames = new Set<string>();
+      document.querySelectorAll('script[src], link[rel="stylesheet"][href]').forEach((el) => {
+        const src = el.getAttribute('src') || el.getAttribute('href');
+        const fname = getFilename(src);
+        if (fname && (fname.endsWith('.js') || fname.endsWith('.css'))) {
+          filenames.add(fname);
+        }
+      });
+      return filenames;
+    };
 
+    const initialAssets = getInitialAssets();
+
+    // Check if server index.html has new bundle assets
     const checkForUpdates = async () => {
+      if (initialAssets.size === 0) return;
+
       try {
         // Fetch index.html bypassing cache
         const res = await fetch(`/?_t=${Date.now()}`, {
@@ -40,30 +47,18 @@ export function UpdateNotifier() {
         if (!res.ok) return;
 
         const html = await res.text();
-        
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
         let updateDetected = false;
 
-        // 1. Check for new asset paths in scripts/links
-        const assetRegex = /(?:src|href)=["']?([^"'\s>]+?\.(?:js|css))/gi;
-        let match: RegExpExecArray | null;
-
-        while ((match = assetRegex.exec(html)) !== null) {
-          const assetUrl = match[1].split('?')[0];
-          if (assetUrl && !initialData.assets.has(assetUrl)) {
-            if (assetUrl.includes('/assets/') || assetUrl.includes('.js') || assetUrl.includes('.css')) {
-              updateDetected = true;
-              break;
-            }
-          }
-        }
-
-        // 2. Fallback: check if script tag contents or main index fingerprints changed
-        if (!updateDetected && initialData.scriptSignature) {
-          const fetchedScripts = (html.match(/<script[^>]*src=["']?([^"'\s>]+)/gi) || []).join('');
-          if (fetchedScripts && fetchedScripts !== initialData.scriptSignature) {
+        doc.querySelectorAll('script[src], link[rel="stylesheet"][href]').forEach((el) => {
+          const src = el.getAttribute('src') || el.getAttribute('href');
+          const fname = getFilename(src);
+          if (fname && (fname.endsWith('.js') || fname.endsWith('.css')) && !initialAssets.has(fname)) {
             updateDetected = true;
           }
-        }
+        });
 
         if (updateDetected) {
           setUpdateAvailable(true);
@@ -73,26 +68,19 @@ export function UpdateNotifier() {
       }
     };
 
-    // Check every 15 seconds to give Cloudflare time to deploy changes
+    // Wait 20 seconds before starting first check
     const initialTimer = setTimeout(() => {
       checkForUpdates();
-    }, 15000);
+    }, 20000);
 
-    // Periodic check every 15 seconds
+    // Periodic check every 20 seconds
     const interval = setInterval(() => {
       checkForUpdates();
-    }, 15000);
-
-    // Also check on tab focus
-    const handleActivity = () => {
-      checkForUpdates();
-    };
-    window.addEventListener('focus', handleActivity);
+    }, 20000);
 
     return () => {
       clearTimeout(initialTimer);
       clearInterval(interval);
-      window.removeEventListener('focus', handleActivity);
     };
   }, []);
 
