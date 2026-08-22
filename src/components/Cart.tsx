@@ -176,7 +176,15 @@ export function Cart() {
                             className="flex gap-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 shadow-sm"
                           >
                             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-xl overflow-hidden shrink-0 border border-slate-100">
-                              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                              <img 
+                                src={item.imageUrl} 
+                                alt={item.name} 
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800';
+                                }}
+                                className="w-full h-full object-cover" 
+                              />
                             </div>
                             <div className="flex-1 flex flex-col justify-between min-w-0">
                               <div className="flex justify-between items-start gap-1">

@@ -112,6 +112,10 @@ export function Products() {
                       <img 
                         src={product.imageUrl} 
                         alt={product.name}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800';
+                        }}
                         className="w-full h-full object-cover transform group-hover:scale-110 transition-all duration-500 ease-out"
                       />
                       

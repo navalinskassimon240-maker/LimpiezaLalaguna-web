@@ -9,6 +9,13 @@ import { Product } from '../types';
  * 
  * 📋 GUÍA PASO A PASO PARA MODIFICAR EL CÓDIGO:
  * 
+ * 🖼️ ¿CÓMO PONER IMÁGENES DESDE TU CARPETA public/IMG?
+ *    - Pones la foto de tu producto adentro de la carpeta `public/IMG/` (ejemplo: `jabon-5l.jpg` o `cloro.png`).
+ *    - Luego en la propiedad `imageUrl` pon simplemente la ruta empezando con `/IMG/`:
+ *      👉 `imageUrl: '/IMG/jabon-5l.jpg'`
+ *    - O si quieres usar una imagen de internet, pon el link directo:
+ *      👉 `imageUrl: 'https://images.unsplash.com/...'`
+ * 
  * 🔍 1. ¿CÓMO VER TODOS LOS PRODUCTOS QUE HAY?
  *    - Desliza hacia abajo en este archivo. Están organizados por categorías claras:
  *      • Combos y Promos
@@ -28,7 +35,7 @@ import { Product } from '../types';
  *      name: 'Nombre del Producto',
  *      category: 'Productos de Limpieza',
  *      description: 'Descripción corta y atractiva del producto.',
- *      imageUrl: 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800',
+ *      imageUrl: '/IMG/mi-foto-de-producto.jpg', // 👈 ¡AQUÍ PONÉS TU IMAGEN DE public/IMG!
  *      basePrice: 2500,
  *      unitType: 'unidades', // Usar 'unidades' o 'litros'
  *      options: [
@@ -115,7 +122,7 @@ export const products: Product[] = [
     name: 'Suavizante x 5 Lts',
     category: 'Productos de Limpieza',
     description: 'Suavizante para ropa perfumado. Deja tus prendas suaves con aroma duradero. Variedad de fragancias.',
-    imageUrl: 'public/IMG/suavizante.png',
+    imageUrl: 'https://images.unsplash.com/photo-1585836696096-7bbcfd703cb8?auto=format&fit=crop&q=80&w=800',
     basePrice: 5100,
     unitType: 'litros',
     options: [
@@ -359,7 +366,7 @@ export const products: Product[] = [
     name: 'Cepillo Lava Coche',
     category: 'Escobillón y Mopas',
     description: 'Cepillo con cerdas súper suaves especiales para el lavado de autos sin rayar carrocería.',
-    imageUrl:-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800',
     basePrice: 4200,
     unitType: 'unidades',
     options: [
