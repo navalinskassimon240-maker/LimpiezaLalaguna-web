@@ -115,7 +115,7 @@ export const products: Product[] = [
     name: 'Suavizante x 5 Lts',
     category: 'Productos de Limpieza',
     description: 'Suavizante para ropa perfumado. Deja tus prendas suaves con aroma duradero. Variedad de fragancias.',
-    imageUrl: 'https://images.unsplash.com/photo-1585836696096-7bbcfd703cb8?auto=format&fit=crop&q=80&w=800',
+    imageUrl: 'public/IMG/suavizante.png',
     basePrice: 5100,
     unitType: 'litros',
     options: [
@@ -359,7 +359,7 @@ export const products: Product[] = [
     name: 'Cepillo Lava Coche',
     category: 'Escobillón y Mopas',
     description: 'Cepillo con cerdas súper suaves especiales para el lavado de autos sin rayar carrocería.',
-    imageUrl: 'https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800',
+    imageUrl:-1520340356584-f9917d1eea6f?auto=format&fit=crop&q=80&w=800',
     basePrice: 4200,
     unitType: 'unidades',
     options: [
