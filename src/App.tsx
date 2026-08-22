@@ -13,6 +13,7 @@ import { Footer } from './components/Footer';
 import { CartProvider } from './context/CartContext';
 import { Cart } from './components/Cart';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
+import { UpdateNotifier } from './components/UpdateNotifier';
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           <Footer />
           <Cart />
           <FloatingWhatsApp />
+          <UpdateNotifier />
         </div>
       </div>
     </CartProvider>
