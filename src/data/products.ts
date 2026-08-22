@@ -126,7 +126,9 @@ export const products: Product[] = [
     basePrice: 5100,
     unitType: 'litros',
     options: [
-      { label: 'Bidón x 5 Lts', price: 5100 }
+      { label: 'Suavizante blanco', price: 5200 },
+      { label: 'Suavizante celeste', price: 5200 },
+      { label: 'Suavizante lila', price: 5200 }
     ]
   },
   {
