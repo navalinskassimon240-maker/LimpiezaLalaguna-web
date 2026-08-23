@@ -136,7 +136,7 @@ export const products: Product[] = [
     name: 'Detergente Ultra x 5 Lts',
     category: 'Productos de Limpieza',
     description: 'Detergente concentrado ultra desengrasante con alto poder espumígeno para vajilla y cocina.',
-    imageUrl: 'https://images.unsplash.com/photo-1563453392212-326f5e854473?auto=format&fit=crop&q=80&w=800',
+    imageUrl: 'IMG/Detergente.png',
     basePrice: 6200,
     unitType: 'litros',
     options: [
@@ -148,11 +148,12 @@ export const products: Product[] = [
     name: 'Jabón Líquido T/Ariel o Skip x 5 Lts',
     category: 'Productos de Limpieza',
     description: 'Jabón líquido premium para lavarropas automático y lavado a mano. Tipo Ariel o Skip.',
-    imageUrl: 'https://images.unsplash.com/photo-1610557892470-55d9e80c0bce?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/JabonLiquidoTArielskip.png',
     basePrice: 5100,
     unitType: 'litros',
     options: [
-      { label: 'Bidón x 5 Lts (Tipo Ariel o Skip)', price: 5100 }
+      { label: 'Jabon T/Ariel', price: 5100 }
+      { label: 'Jabon T/Skip', price: 5100 }
     ]
   },
   {
@@ -160,7 +161,7 @@ export const products: Product[] = [
     name: 'Lavandina x 5 Lts',
     category: 'Productos de Limpieza',
     description: 'Lavandina clásica desinfectante para baños, pisos y desinfección general.',
-    imageUrl: 'https://images.unsplash.com/photo-1584820927498-cafe4c23ccdb?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/Lavandina.png',
     basePrice: 3500,
     unitType: 'litros',
     options: [
@@ -172,35 +173,35 @@ export const products: Product[] = [
     name: 'Desodorante para Piso x 5 Lts',
     category: 'Productos de Limpieza',
     description: 'Limpiador desodorizante perfumado para todo tipo de pisos.',
-    imageUrl: 'https://images.unsplash.com/photo-1629853925763-74b2f4f2de63?auto=format&fit=crop&q=80&w=800',
+    imageUrl: '/IMG/DesodorantePiso.png',
     basePrice: 3500,
     unitType: 'litros',
     options: [
       { label: 'Bidón x 5 Lts', price: 3500 }
     ]
   },
+
   {
-    id: 'perfumina-5l',
-    name: 'Perfumina Concentrada x 5 Lts',
+    id: 'concentrado-piso-10l',
+    name: 'Concentrado para Piso (Rinde 10Lts)',
     category: 'Productos de Limpieza',
-    description: 'Perfumina concentrada con fragancias florales y cítricas intensas para aromatizar y limpiar pisos.',
-    imageUrl: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&q=80&w=800',
-    basePrice: 4200,
-    unitType: 'litros',
-    options: [
-      { label: 'Bidón x 5 Lts', price: 4200 }
-    ]
-  },
-  {
-    id: 'concentrado-piso-50l',
-    name: 'Concentrado para Piso (Rinde 50 Lts)',
-    category: 'Productos de Limpieza',
-    description: 'Botella de concentrado para preparar 50 litros de desodorante de piso. Fragancias: Citronella, Lysoform, Lavanda, Marina, etc.',
-    imageUrl: 'https://images.unsplash.com/photo-1608248597369-0268a7356c9a?auto=format&fit=crop&q=80&w=800',
+    description: 'Botella de concentrado para preparar 510 litros de desodorante de piso. Fragancias: Citronella, Lysoform, Lavanda, Marina, etc.',
+    imageUrl: '/IMG/ConcentradoPiso.png',
     basePrice: 2700,
     unitType: 'unidades',
     options: [
-      { label: 'Botella Concentrado (Rinde 50L)', price: 2700 }
+      { label: 'Citronella', price: 2700 }
+      { label: 'Lysoform', price: 2700 }
+      { label: 'Lavanda', price: 2700 }
+      { label: 'Marina', price: 2700 }
+      { label: 'Colonia', price: 2700 }
+      { label: 'Limón', price: 2700 }
+      { label: 'Flores Blancas', price: 2700 }
+      { label: 'Cítrico', price: 2700 }
+      { label: 'Frutos rojos', price: 2700 }
+      { label: 'Arpege', price: 2700 }
+      { label: 'Procenex', price: 2700 }
+      { label: 'Espadol', price: 2700 }
     ]
   },
 
@@ -296,7 +297,7 @@ export const products: Product[] = [
     name: 'Barrendero 40 cm',
     category: 'Escobillón y Mopas',
     description: 'Cepillo barrendero reforzado de 40 cm ideal para veredas, patios y cemento.',
-    imageUrl: '/IMG/barrendero40CM.png',
+    imageUrl: '/IMG/barrandero40CM.png',
     basePrice: 7100,
     unitType: 'unidades',
     options: [
