@@ -80,18 +80,15 @@ export function Cart() {
       text += `🚚 *MÉTODO DE ENTREGA:* Envío a Domicilio\n`;
       text += `📍 *DIRECCIÓN:* ${address.trim()}\n`;
       text += `👤 *QUIÉN RECIBE:* ${receiverName.trim()}\n`;
-      text += `💵 *FORMA DE PAGO:* ${paymentMethod === 'cash' ? 'Efectivo al recibir' : 'Transferencia bancaria'}\n`;
+      text += `💵 *FORMA DE PAGO:* ${paymentMethod === 'cash' ? 'Efectivo al recibir' : 'Transferencia'}\n`;
     } else {
       text += `🏪 *MÉTODO DE ENTREGA:* Retiro en el Local\n`;
       text += `📍 *SUCURSAL:* ${siteConfig.contacto.direccionRetiroCarrito}\n`;
       text += `🏷️ *A NOMBRE DE:* ${orderName.trim()}\n`;
       text += `👤 *QUIÉN RETIRA:* ${pickupName.trim()}\n`;
-      text += `💵 *FORMA DE PAGO:* ${paymentMethod === 'cash' ? 'Pago en el local' : 'Transferencia bancaria'}\n`;
+      text += `💵 *FORMA DE PAGO:* ${paymentMethod === 'cash' ? 'Efectivo en el local' : 'Transferencia'}\n`;
     }
     
-    if (paymentMethod === 'transfer') {
-      text += `📲 _(Te enviaré el comprobante de transferencia por aquí)_\n`;
-    }
     text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
     text += `¡Muchas gracias! 🙌`;
     
@@ -319,11 +316,6 @@ export function Cart() {
                               </label>
                             </div>
                           </div>
-                          
-                          {paymentMethod === 'transfer' && (
-                            <div className="p-3 bg-blue-50/80 rounded-xl text-xs text-slate-700 border border-blue-100">
-                            </div>
-                          )}
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -369,12 +361,6 @@ export function Cart() {
                               </label>
                             </div>
                           </div>
-                          
-                          {paymentMethod === 'transfer' && (
-                            <div className="p-3 bg-blue-50/80 rounded-xl text-xs text-slate-700 border border-blue-100">
-          
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
