@@ -90,7 +90,6 @@ export function Cart() {
     }
     
     if (paymentMethod === 'transfer') {
-      text += `💳 *ALIAS:* ${siteConfig.whatsapp.aliasTransferencia}\n`;
       text += `📲 _(Te enviaré el comprobante de transferencia por aquí)_\n`;
     }
     text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
@@ -323,7 +322,6 @@ export function Cart() {
                           
                           {paymentMethod === 'transfer' && (
                             <div className="p-3 bg-blue-50/80 rounded-xl text-xs text-slate-700 border border-blue-100">
-                              Alias: <strong className="text-blue-900 font-black">{siteConfig.whatsapp.aliasTransferencia}</strong>
                             </div>
                           )}
                         </div>
@@ -374,7 +372,7 @@ export function Cart() {
                           
                           {paymentMethod === 'transfer' && (
                             <div className="p-3 bg-blue-50/80 rounded-xl text-xs text-slate-700 border border-blue-100">
-                              Alias: <strong className="text-blue-900 font-black">{siteConfig.whatsapp.aliasTransferencia}</strong>
+          
                             </div>
                           )}
                         </div>
