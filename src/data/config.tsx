@@ -62,7 +62,6 @@ export const siteConfig = {
     numero: "2241507532", 
     
     // Alias de Mercado Pago, CBU o Cuenta Bancaria para transferencias
-    aliasTransferencia: "LIMPIEZALALAGUNA.MP",
     titularCuenta: "Limpieza Lalaguna",
     banco: "Mercado Pago / Transferencia",
   },
