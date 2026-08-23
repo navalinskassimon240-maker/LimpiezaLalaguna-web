@@ -38,7 +38,7 @@ export const siteConfig = {
   // =======================================================================================
   marca: {
     // Nombre que aparece en la cabecera (dividido en 2 para poder darle colores distintos)
-    nombrePrincipal: "La",      // Parte 1 (en azul)
+    nombrePrincipal: "Limpieza",      // Parte 1 (en azul)
     nombreResaltado: "Lalaguna",      // Parte 2 (en verde esmeralda)
     
     // Letra o inicial que va dentro del ícono del logo (si no usas imagen)
@@ -329,60 +329,59 @@ export const siteConfig = {
         isOpen: false,
         shifts: []
       },
-      {
+       {
         dayName: 'Lunes',
         dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
       {
         dayName: 'Martes',
-        dayIndex: 2,
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
-      {
-        dayName: 'Miércoles',
-        dayIndex: 3,
+       {
+        dayName: 'Miercoles',
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
       {
         dayName: 'Jueves',
-        dayIndex: 4,
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
-      {
+       {
         dayName: 'Viernes',
-        dayIndex: 5,
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
       {
-        dayName: 'Sábado',
-        dayIndex: 6,
+        dayName: 'Sabado',
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '09:00', close: '13:00' },
-          { open: '17:00', close: '20:30' }
+          { open: '09:00', close: '13:30' }
         ]
-      }
+      },
     ]
   },
 

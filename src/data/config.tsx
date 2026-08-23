@@ -59,7 +59,7 @@ export const siteConfig = {
   // =======================================================================================
   whatsapp: {
     // Número al que llegan todos los pedidos y consultas (sin espacios ni guiones)
-    numero: "2241613188", 
+    numero: "2241507532", 
     
     // Alias de Mercado Pago, CBU o Cuenta Bancaria para transferencias
     aliasTransferencia: "LIMPIEZALALAGUNA.MP",
@@ -72,17 +72,17 @@ export const siteConfig = {
   // =======================================================================================
   contacto: {
     // Teléfono que se muestra visible en el pie de página
-    telefonoMostrar: "+54 9 2241 613188",
+    telefonoMostrar: "+54 9 2241 507532",
     
     // Correo electrónico de contacto
-    email: "info@limpiezalalaguna.com",
+    email: "...",
     
     // Dirección física mostrada en el pie de página
-    direccionPiePagina1: "Calle Principal 123",
+    direccionPiePagina1: "Garay 349",
     direccionPiePagina2: "Chascomús, Buenos Aires",
     
     // Dirección exacta donde los clientes retiran su pedido cuando eligen "Retiro en el local"
-    direccionRetiroCarrito: "Av. Siempre Viva 1234, Local 5 (Chascomús)",
+    direccionRetiroCarrito: "Garay 349, esq. Florencio Chappa (Chascomús)",
     
     // Mensaje de ayuda para retiros
     notaRetiro: "Te avisaremos por WhatsApp en cuanto tu pedido esté empaquetado y listo para retirar.",
@@ -92,10 +92,10 @@ export const siteConfig = {
   // 🌐 SECCIÓN 4: REDES SOCIALES
   // =======================================================================================
   redesSociales: {
-    instagram: "https://instagram.com",
-    facebook: "https://facebook.com",
-    tiktok: "https://tiktok.com",
-    googleMaps: "https://maps.google.com",
+    instagram: "https://www.instagram.com/lalaguna_1/",
+    facebook: "https://www.facebook.com/share/1D1tVWxR7J/",
+    tiktok: "https://www.tiktok.com/@pastas.la.laguna",
+    googleMaps: "https://www.google.com/maps/place/La+Laguna+ART+DE+LIMPIEZA/@-35.5719592,-58.0033555,16z/data=!4m6!3m5!1s0x959872a96f7f137b:0x4ac2aaa7bff66a1b!8m2!3d-35.5719592!4d-58.0007806!16s%2Fg%2F11nk0tm3_8?entry=ttu&g_ep=EgoyMDI2MDgxOS4wIKXMDSoASAFQAw%3D%3D",
   },
 
   // =======================================================================================
@@ -320,60 +320,59 @@ export const siteConfig = {
         isOpen: false,
         shifts: []
       },
-      {
+       {
         dayName: 'Lunes',
         dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
       {
         dayName: 'Martes',
-        dayIndex: 2,
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
-      {
-        dayName: 'Miércoles',
-        dayIndex: 3,
+       {
+        dayName: 'Miercoles',
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
       {
         dayName: 'Jueves',
-        dayIndex: 4,
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
-      {
+       {
         dayName: 'Viernes',
-        dayIndex: 5,
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
       {
-        dayName: 'Sábado',
-        dayIndex: 6,
+        dayName: 'Sabado',
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '09:00', close: '13:00' },
-          { open: '17:00', close: '20:30' }
+          { open: '09:00', close: '13:30' }
         ]
-      }
+      },
     ]
   },
 
