@@ -158,34 +158,25 @@ export const siteConfig = {
       },
       {
         id: 'envios',
-        tag: 'Envio gratis',
-        tagColor: 'bg-blue-600 text-white',
-        title: 'Compra a mayor de 17.000 Envio gratis',
-        subtitle: 'Envio gratis con compra mayor a 17.000',
+        tag: 'Envío Gratis',
+        tagColor: 'bg-pink-600 text-white',
+        title: '¡Envío Gratis en tu Compra!',
+        subtitle: 'Aprovechá el beneficio superando los $15.000.',
         imageUrl: '/IMG/envios2.png',
-        whatsappMessage: '¡Hola! Quisiera pedir los Combos Ahorro con bidones incluidos.',
-        ctaText: 'Consultar Combos'
-      },
+        whatsappMessage: '¡Hola! Quisiera realizar un pedido y aprovechar el envío gratis.',
+        ctaText: 'Hacer Pedido'
+     }
+     
       {
-        id: 'envios-info',
-        tag: 'info',
-        tagColor: 'bg-emerald-600 text-white',
-        title: 'Informacion envios',
-        subtitle: 'Envios a domicilio LimpiezaLalaguna',
-        imageUrl: '/IMG/envios.png',
-        whatsappMessage: '¡Hola! Quería consultar por los bidones y productos de limpieza disponibles.',
-        ctaText: 'Ver Productos'
-      },
-      {
-        id: 'promo-aromas',
-        tag: 'Nuevos Ingresos',
-        tagColor: 'bg-purple-600 text-white',
-        title: 'Línea de Perfumería y Aromatización',
-        subtitle: 'Difusores de varillas, aerosoles textiles, fragancias ambientales y esencias para el hogar.',
-        imageUrl: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&q=80&w=1400',
-        whatsappMessage: '¡Hola! Quisiera consultar la lista de aromas y fragancias disponibles.',
-        ctaText: 'Consultar Fragancias'
-      }
+        id: 'mayoristas',
+       tag: 'Revendedores', 
+       tagColor: 'bg-blue-600 text-white', 
+       title: '¡Atención Revendedores!',
+       subtitle: 'Cloro a partir de 1000 LTS a un precio único.',
+       imageUrl: '/IMG/novedad4.jpg', 
+       whatsappMessage: '¡Hola! Quisiera consultar por el precio único de Cloro a partir de 1000 litros para revendedores.',
+       ctaText: 'Consultar Precio'
+     }
     ]
   },
 
