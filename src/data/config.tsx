@@ -173,7 +173,7 @@ export const siteConfig = {
        tagColor: 'bg-blue-600 text-white', 
        title: '¡Atención Revendedores!',
        subtitle: 'Cloro a partir de 1000 LTS a un precio único.',
-       imageUrl: '/IMG/novedad4.jpg', 
+       imageUrl: '/IMG/novedad4.png', 
        whatsappMessage: '¡Hola! Quisiera consultar por el precio único de Cloro a partir de 1000 litros para revendedores.',
        ctaText: 'Consultar Precio'
      }
