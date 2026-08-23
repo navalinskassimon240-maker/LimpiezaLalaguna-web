@@ -165,7 +165,7 @@ export const siteConfig = {
         imageUrl: '/IMG/envios2.png',
         whatsappMessage: '¡Hola! Quisiera realizar un pedido y aprovechar el envío gratis.',
         ctaText: 'Hacer Pedido'
-     }
+     },
      
       {
         id: 'mayoristas',
