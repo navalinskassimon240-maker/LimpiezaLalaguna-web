@@ -152,7 +152,7 @@ export const products: Product[] = [
     basePrice: 5100,
     unitType: 'litros',
     options: [
-      { label: 'Jabon T/Ariel', price: 5100 }
+      { label: 'Jabon T/Ariel', price: 5100 },
       { label: 'Jabon T/Skip', price: 5100 }
     ]
   },
@@ -190,17 +190,17 @@ export const products: Product[] = [
     basePrice: 2700,
     unitType: 'unidades',
     options: [
-      { label: 'Citronella', price: 2700 }
-      { label: 'Lysoform', price: 2700 }
-      { label: 'Lavanda', price: 2700 }
-      { label: 'Marina', price: 2700 }
-      { label: 'Colonia', price: 2700 }
-      { label: 'Limón', price: 2700 }
-      { label: 'Flores Blancas', price: 2700 }
-      { label: 'Cítrico', price: 2700 }
-      { label: 'Frutos rojos', price: 2700 }
-      { label: 'Arpege', price: 2700 }
-      { label: 'Procenex', price: 2700 }
+      { label: 'Citronella', price: 2700 },
+      { label: 'Lysoform', price: 2700 },
+      { label: 'Lavanda', price: 2700 },
+      { label: 'Marina', price: 2700 },
+      { label: 'Colonia', price: 2700 },
+      { label: 'Limón', price: 2700 },
+      { label: 'Flores Blancas', price: 2700 },
+      { label: 'Cítrico', price: 2700 },
+      { label: 'Frutos rojos', price: 2700 },
+      { label: 'Arpege', price: 2700 },
+      { label: 'Procenex', price: 2700 },
       { label: 'Espadol', price: 2700 }
     ]
   },
