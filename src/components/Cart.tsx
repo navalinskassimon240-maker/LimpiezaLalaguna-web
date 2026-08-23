@@ -10,7 +10,7 @@ type CheckoutStep = 'cart' | 'checkout';
 
 export function Cart() {
   const [mounted, setMounted] = useState(false);
-  const { isCartOpen, setIsCartOpen, cartItems, updateQuantity, removeFromCart, cartTotal, cartCount } = useCart();
+  const { isCartOpen, setIsCartOpen, cartItems, updateQuantity, removeFromCart, clearCart, cartTotal, cartCount } = useCart();
   const [step, setStep] = useState<'cart' | 'checkout'>('cart');
   const [shippingMethod, setShippingMethod] = useState<'delivery' | 'pickup'>('delivery');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
@@ -96,6 +96,7 @@ export function Cart() {
     
     setTimeout(() => {
       window.open(whatsappUrl, '_blank');
+      clearCart();
       setIsProcessing(false);
       handleClose();
     }, 600);
