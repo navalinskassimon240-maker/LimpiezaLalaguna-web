@@ -1,4 +1,4 @@
-
+import { LagunitaAI } from "./components/LagunitaAI";
 import React, { useState, useMemo, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -114,6 +114,7 @@ const App: React.FC = () => {
       </main>
 
       <Footer />
+
       
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onUpdateQuantity={(id, delta) => setCart(prev => prev.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + delta)} : i))} onRemove={(id) => setCart(prev => prev.filter(i => i.id !== id))} onClearCart={() => setCart([])} />
       <AIConsultant isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} user={user} />
@@ -133,5 +134,5 @@ const App: React.FC = () => {
     </div>
   );
 };
-
+<LagunitaAI />
 export default App;
