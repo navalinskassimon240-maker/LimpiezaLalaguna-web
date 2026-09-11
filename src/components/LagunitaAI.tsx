@@ -5,6 +5,13 @@ type Message = {
   text: string;
 };
 
+const QUICK_ACTIONS = [
+  "🧼 Quitar una mancha",
+  "🏠 Limpiar mi casa",
+  "🚗 Limpiar el auto",
+  "✨ Tengo otra consulta",
+];
+
 export function LagunitaAI() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -13,149 +20,130 @@ export function LagunitaAI() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: "¡Hola! 👋 Soy Lagunita ✨\n\nContame qué necesitás limpiar o qué mancha querés sacar y te ayudo.",
+      text:
+        "¡Hola! 👋 Soy Lagunita, el asistente de Limpieza La Laguna.\n\n" +
+        "Contame qué necesitás limpiar o qué mancha querés sacar y te ayudo. ✨",
     },
   ]);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const sendMessage = async (quickText?: string) => {
-    const text = (quickText || input).trim();
+  useEffect(() => {
+    if (open) {
+      window.setTimeout(() => inputRef.current?.focus(), 250);
+    }
+  }, [open]);
 
+  async function sendMessage(customText?: string) {
+    const text = (customText ?? input).trim();
     if (!text || loading) return;
 
-    const history = messages.slice(-8);
+    const previousMessages = messages;
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "user",
-        text,
-      },
-    ]);
-
+    setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
     setLoading(true);
 
     try {
+      const history = previousMessages
+        .slice(-8)
+        .map((m) => ({ role: m.role, text: m.text }));
+
       const response = await fetch("/api/chat", {
         method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          message: text,
-          history,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, history }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Error");
+        throw new Error(data?.error || `Error HTTP ${response.status}`);
       }
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          text: data.text,
+          text:
+            data?.text ||
+            "Uy 😕 No pude responder en este momento. Probá nuevamente.",
         },
       ]);
     } catch (error) {
-      console.error(error);
+      console.error("Lagunita IA:", error);
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          text: "Uy 😕 No pude responder en este momento. Probá nuevamente.",
+          text:
+            "Uy 😕 No pude conectarme en este momento. Probá de nuevo en unos segundos.",
         },
       ]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-  };
+  }
 
   return (
     <>
       <style>{`
-
-        @keyframes lagunita-float {
-          0%,100% { transform: translateY(0); }
+        @keyframes lagunitaFloat {
+          0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-5px); }
         }
 
-        @keyframes lagunita-pulse {
-          0% { transform: scale(1); opacity:.5; }
-          100% { transform:scale(1.4); opacity:0; }
+        @keyframes lagunitaPulse {
+          0% { transform: scale(1); opacity: .5; }
+          100% { transform: scale(1.42); opacity: 0; }
         }
 
-        @keyframes lagunita-open {
-          from {
-            opacity:0;
-            transform:translateY(25px) scale(.94);
+        @keyframes lagunitaOpen {
+          from { opacity: 0; transform: translateY(22px) scale(.94); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes lagunitaDot {
+          0%, 80%, 100% { transform: translateY(0); opacity: .3; }
+          40% { transform: translateY(-5px); opacity: 1; }
+        }
+
+        .lagunita-launcher { animation: lagunitaFloat 3s ease-in-out infinite; }
+        .lagunita-pulse { animation: lagunitaPulse 2s infinite; }
+        .lagunita-window { animation: lagunitaOpen .24s ease-out; }
+        .lagunita-dot:nth-child(1) { animation: lagunitaDot 1.2s infinite; }
+        .lagunita-dot:nth-child(2) { animation: lagunitaDot 1.2s .15s infinite; }
+        .lagunita-dot:nth-child(3) { animation: lagunitaDot 1.2s .30s infinite; }
+
+        @media (max-width: 640px) {
+          .lagunita-launch-wrap {
+            left: 14px !important;
+            bottom: 14px !important;
           }
 
-          to {
-            opacity:1;
-            transform:translateY(0) scale(1);
-          }
-        }
-
-        @keyframes lagunita-dot {
-          0%,80%,100% {
-            transform:translateY(0);
-            opacity:.3;
+          .lagunita-window {
+            left: 12px !important;
+            bottom: 12px !important;
+            width: calc(100vw - 24px) !important;
+            height: min(560px, calc(100vh - 24px)) !important;
           }
 
-          40% {
-            transform:translateY(-5px);
-            opacity:1;
+          .lagunita-label-sub {
+            display: none !important;
           }
         }
-
-        .lagunita-launch {
-          animation:lagunita-float 3s ease-in-out infinite;
-        }
-
-        .lagunita-pulse {
-          animation:lagunita-pulse 2s infinite;
-        }
-
-        .lagunita-window {
-          animation:lagunita-open .25s ease-out;
-        }
-
-        .lag-dot:nth-child(1) {
-          animation:lagunita-dot 1.2s infinite;
-        }
-
-        .lag-dot:nth-child(2) {
-          animation:lagunita-dot 1.2s .15s infinite;
-        }
-
-        .lag-dot:nth-child(3) {
-          animation:lagunita-dot 1.2s .30s infinite;
-        }
-
       `}</style>
 
-      {/* BOTÓN */}
       {!open && (
         <div
-          style={{
-            position: "fixed",
-            left: 24,
-            bottom: 24,
-            zIndex: 99999,
-          }}
+          className="lagunita-launch-wrap"
+          style={{ position: "fixed", left: 24, bottom: 24, zIndex: 99990 }}
         >
           <div style={{ position: "relative" }}>
             <div
@@ -169,148 +157,108 @@ export function LagunitaAI() {
             />
 
             <button
-              className="lagunita-launch"
+              className="lagunita-launcher"
               onClick={() => setOpen(true)}
+              title="¿Necesitás ayuda con la limpieza?"
+              aria-label="Abrir Lagunita IA"
               style={{
                 position: "relative",
-                border: "none",
+                border: 0,
                 cursor: "pointer",
-
                 background:
-                  "linear-gradient(135deg,#0877ff,#00a6c7,#00a86b)",
-
-                color: "white",
-
+                  "linear-gradient(135deg, #0877ff 0%, #00a6c7 48%, #00a86b 100%)",
+                color: "#fff",
                 borderRadius: 999,
-
-                padding: "13px 20px",
-
+                padding: "12px 18px",
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-
                 fontWeight: 800,
-
-                boxShadow:
-                  "0 15px 35px rgba(0,90,180,.30)",
+                boxShadow: "0 16px 36px rgba(0, 95, 180, .32)",
               }}
             >
               <span
                 style={{
-                  width: 34,
-                  height: 34,
-
-                  background: "rgba(255,255,255,.18)",
-
-                  borderRadius: "50%",
-
+                  width: 36,
+                  height: 36,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-
-                  fontSize: 18,
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,.18)",
+                  fontSize: 19,
                 }}
               >
                 ✨
               </span>
 
-              <div style={{ textAlign: "left" }}>
-                <div
+              <span style={{ textAlign: "left", lineHeight: 1.1 }}>
+                <span
+                  className="lagunita-label-sub"
                   style={{
+                    display: "block",
                     fontSize: 10,
-                    opacity: 0.8,
+                    opacity: .82,
+                    fontWeight: 600,
+                    marginBottom: 4,
                   }}
                 >
                   ¿Necesitás ayuda?
-                </div>
+                </span>
 
-                <div
-                  style={{
-                    fontSize: 13,
-                  }}
-                >
+                <span style={{ display: "block", fontSize: 13 }}>
                   Preguntale a Lagunita
-                </div>
-              </div>
+                </span>
+              </span>
             </button>
           </div>
         </div>
       )}
 
-      {/* CHAT */}
       {open && (
-        <div
+        <section
           className="lagunita-window"
+          aria-label="Chat de Lagunita IA"
           style={{
             position: "fixed",
-
             left: 24,
             bottom: 24,
-
-            width: 380,
+            width: 390,
             maxWidth: "calc(100vw - 28px)",
-
-            height: 530,
+            height: 540,
             maxHeight: "calc(100vh - 40px)",
-
-            background: "white",
-
+            background: "#fff",
             borderRadius: 26,
-
-            boxShadow:
-              "0 30px 80px rgba(15,23,42,.30)",
-
+            boxShadow: "0 30px 80px rgba(15,23,42,.30)",
             overflow: "hidden",
-
             zIndex: 99999,
-
             display: "flex",
             flexDirection: "column",
-
-            fontFamily:
-              "Inter, Arial, sans-serif",
+            fontFamily: "Inter, system-ui, Arial, sans-serif",
+            border: "1px solid #e2e8f0",
           }}
         >
-
-          {/* HEADER */}
-
-          <div
+          <header
             style={{
               background:
-                "linear-gradient(135deg,#0f172a,#064e7a,#047857)",
-
-              color: "white",
-
+                "linear-gradient(135deg,#0f172a 0%,#075985 52%,#047857 100%)",
+              color: "#fff",
               padding: 16,
-
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div
                 style={{
                   width: 42,
                   height: 42,
-
                   borderRadius: 15,
-
-                  background:
-                    "rgba(255,255,255,.15)",
-
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-
+                  background: "rgba(255,255,255,.15)",
                   fontSize: 20,
                 }}
               >
@@ -318,353 +266,221 @@ export function LagunitaAI() {
               </div>
 
               <div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                  }}
-                >
-
-                  <strong>
-                    Lagunita IA
-                  </strong>
-
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <strong style={{ fontSize: 15 }}>Lagunita IA</strong>
                   <span
                     style={{
                       fontSize: 9,
-
                       padding: "3px 7px",
-
                       borderRadius: 999,
-
-                      background:
-                        "rgba(16,185,129,.20)",
-
+                      background: "rgba(16,185,129,.20)",
                       color: "#6ee7b7",
+                      fontWeight: 800,
                     }}
                   >
                     ● EN LÍNEA
                   </span>
-
                 </div>
 
-                <div
-                  style={{
-                    fontSize: 11,
-                    opacity: 0.7,
-                    marginTop: 2,
-                  }}
-                >
+                <div style={{ fontSize: 11, opacity: .75, marginTop: 2 }}>
                   Asistente de Limpieza La Laguna
                 </div>
-
               </div>
             </div>
 
             <button
+              type="button"
               onClick={() => setOpen(false)}
+              aria-label="Cerrar chat"
               style={{
-                width: 35,
-                height: 35,
-
+                width: 36,
+                height: 36,
                 border: 0,
-
                 borderRadius: "50%",
-
-                background:
-                  "rgba(255,255,255,.12)",
-
-                color: "white",
-
-                fontSize: 18,
-
+                background: "rgba(255,255,255,.12)",
+                color: "#fff",
                 cursor: "pointer",
+                fontSize: 20,
               }}
             >
               ×
             </button>
-
-          </div>
-
-          {/* MENSAJES */}
+          </header>
 
           <div
             style={{
               flex: 1,
-
               overflowY: "auto",
-
               padding: 15,
-
-              background:
-                "linear-gradient(#f8fafc,#fff)",
+              background: "linear-gradient(#f8fafc, #ffffff)",
             }}
           >
-
             {messages.map((message, index) => (
-
               <div
-                key={index}
+                key={`${message.role}-${index}`}
                 style={{
                   display: "flex",
-
                   justifyContent:
-                    message.role === "user"
-                      ? "flex-end"
-                      : "flex-start",
-
+                    message.role === "user" ? "flex-end" : "flex-start",
                   marginBottom: 12,
                 }}
               >
-
                 <div
                   style={{
                     maxWidth: "82%",
-
                     padding: "11px 14px",
-
                     borderRadius:
                       message.role === "user"
                         ? "18px 18px 5px 18px"
                         : "18px 18px 18px 5px",
-
-                    background:
-                      message.role === "user"
-                        ? "#0877ff"
-                        : "white",
-
-                    color:
-                      message.role === "user"
-                        ? "white"
-                        : "#334155",
-
+                    background: message.role === "user" ? "#0877ff" : "#fff",
+                    color: message.role === "user" ? "#fff" : "#334155",
                     fontSize: 13,
-
                     lineHeight: 1.55,
-
                     whiteSpace: "pre-wrap",
-
                     border:
                       message.role === "assistant"
                         ? "1px solid #e2e8f0"
                         : "none",
-
-                    boxShadow:
-                      "0 3px 10px rgba(15,23,42,.06)",
+                    boxShadow: "0 3px 10px rgba(15,23,42,.06)",
                   }}
                 >
                   {message.text}
                 </div>
-
               </div>
-
             ))}
 
             {loading && (
-
               <div
                 style={{
                   display: "flex",
-                  gap: 6,
                   alignItems: "center",
-
+                  gap: 7,
                   color: "#64748b",
-
                   fontSize: 12,
-
                   marginBottom: 12,
                 }}
               >
-
                 Lagunita está pensando
-
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 3,
-                  }}
-                >
-
+                <span style={{ display: "flex", gap: 3 }}>
                   {[1, 2, 3].map((n) => (
                     <span
                       key={n}
-                      className="lag-dot"
+                      className="lagunita-dot"
                       style={{
                         width: 5,
                         height: 5,
-
                         borderRadius: "50%",
-
                         background: "#10b981",
+                        display: "inline-block",
                       }}
                     />
                   ))}
-
-                </div>
-
+                </span>
               </div>
-
-            ))}
+            )}
 
             <div ref={bottomRef} />
-
           </div>
 
-          {/* OPCIONES */}
-
           {messages.length === 1 && (
-
             <div
               style={{
                 padding: 10,
-
-                borderTop:
-                  "1px solid #f1f5f9",
-
+                borderTop: "1px solid #f1f5f9",
                 display: "grid",
-
-                gridTemplateColumns:
-                  "1fr 1fr",
-
+                gridTemplateColumns: "1fr 1fr",
                 gap: 6,
+                background: "#fff",
               }}
             >
-
-              {[
-                "🧼 Quitar una mancha",
-                "🏠 Limpiar mi casa",
-                "🚗 Limpiar el auto",
-                "🛒 Elegir un producto",
-              ].map((text) => (
-
+              {QUICK_ACTIONS.map((text) => (
                 <button
                   key={text}
-
-                  onClick={() =>
-                    sendMessage(text)
-                  }
-
+                  type="button"
+                  onClick={() => sendMessage(text)}
                   style={{
-                    border:
-                      "1px solid #e2e8f0",
-
+                    border: "1px solid #e2e8f0",
                     background: "#f8fafc",
-
                     borderRadius: 12,
-
                     padding: 9,
-
                     fontSize: 11,
-
                     cursor: "pointer",
-
                     color: "#334155",
+                    textAlign: "left",
                   }}
                 >
                   {text}
                 </button>
-
               ))}
-
             </div>
-
           )}
 
-          {/* INPUT */}
-
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
+            onSubmit={(event) => {
+              event.preventDefault();
               sendMessage();
             }}
-
             style={{
               padding: 11,
-
-              borderTop:
-                "1px solid #e2e8f0",
-
+              borderTop: "1px solid #e2e8f0",
               display: "flex",
-
               gap: 8,
-
-              background: "white",
+              background: "#fff",
             }}
           >
-
             <input
+              ref={inputRef}
               value={input}
-
-              onChange={(e) =>
-                setInput(e.target.value)
-              }
-
-              placeholder="Ej: ¿Cómo saco una mancha?"
-
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="Ej: ¿Cómo saco una mancha de aceite?"
               disabled={loading}
-
               maxLength={500}
-
               style={{
                 flex: 1,
-
-                border:
-                  "1px solid #e2e8f0",
-
+                minWidth: 0,
+                border: "1px solid #e2e8f0",
                 borderRadius: 15,
-
-                padding:
-                  "11px 13px",
-
+                padding: "11px 13px",
                 outline: "none",
-
                 fontSize: 12,
-
-                background:
-                  "#f8fafc",
+                background: "#f8fafc",
               }}
             />
 
             <button
               type="submit"
-
-              disabled={
-                loading ||
-                !input.trim()
-              }
-
+              disabled={loading || !input.trim()}
+              aria-label="Enviar mensaje"
               style={{
-                width: 43,
-                height: 43,
-
+                width: 44,
+                height: 44,
+                flexShrink: 0,
                 border: 0,
-
                 borderRadius: 14,
-
-                cursor: "pointer",
-
-                background:
-                  "linear-gradient(135deg,#0877ff,#10b981)",
-
-                color: "white",
-
+                cursor: loading || !input.trim() ? "not-allowed" : "pointer",
+                background: "linear-gradient(135deg,#0877ff,#10b981)",
+                color: "#fff",
                 fontSize: 18,
-
-                opacity:
-                  loading ||
-                  !input.trim()
-                    ? 0.45
-                    : 1,
+                opacity: loading || !input.trim() ? .45 : 1,
               }}
             >
               ➜
             </button>
-
           </form>
 
-        </div>
+          <div
+            style={{
+              paddingBottom: 8,
+              textAlign: "center",
+              color: "#94a3b8",
+              fontSize: 9,
+              background: "#fff",
+            }}
+          >
+            ✨ IA de Limpieza La Laguna
+          </div>
+        </section>
       )}
     </>
   );
