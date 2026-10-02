@@ -25,45 +25,57 @@ export function Announcements() {
 
   useEffect(() => {
     const unsub = subscribeAnnouncements((liveItems) => {
-      if (liveItems && liveItems.length > 0) {
-        setNovedades(liveItems.map(item => ({
-          id: item.id,
-          tag: item.tag,
-          tagColor: item.tagColor,
-          title: item.title,
+      if (liveItems && Array.isArray(liveItems)) {
+        const cleanList = liveItems.filter(Boolean).map(item => ({
+          id: item.id || `novedad-${Math.random()}`,
+          tag: item.tag || 'Novedad',
+          tagColor: item.tagColor || 'bg-blue-600 text-white',
+          title: item.title || 'Novedad La Laguna',
           subtitle: item.subtitle || item.description || '',
-          imageUrl: item.imageUrl,
+          imageUrl: item.imageUrl || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=1400',
           fallbackUrl: item.fallbackUrl,
           whatsappMessage: item.whatsappMessage || '',
           ctaText: item.ctaText || 'Consultar'
-        })));
+        }));
+        if (cleanList.length > 0) {
+          setNovedades(cleanList);
+          setCurrentIndex(prev => (prev >= cleanList.length ? 0 : prev));
+        }
       }
     });
     return () => unsub();
   }, []);
 
+  const count = novedades ? novedades.length : 0;
+  const safeIndex = count > 0 ? ((currentIndex % count) + count) % count : 0;
+  const current = (novedades && count > 0) ? novedades[safeIndex] : null;
+
   // Auto-slide to the right every 4.5 seconds
   useEffect(() => {
-    if (isPaused || novedades.length === 0) return;
+    if (isPaused || count <= 1) return;
 
     timerRef.current = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % novedades.length);
+      setCurrentIndex((prev) => (prev + 1) % count);
     }, 4500);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPaused, novedades.length]);
+  }, [isPaused, count]);
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % novedades.length);
+    if (count <= 1) return;
+    setCurrentIndex((prev) => (prev + 1) % count);
   };
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + novedades.length) % novedades.length);
+    if (count <= 1) return;
+    setCurrentIndex((prev) => (prev - 1 + count) % count);
   };
 
-  const current = novedades[currentIndex];
+  if (!current) {
+    return null;
+  }
 
   return (
     <section id="novedades" className="py-14 sm:py-18 bg-gradient-to-b from-transparent via-blue-50/30 to-transparent relative scroll-mt-24">

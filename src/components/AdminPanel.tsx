@@ -19,7 +19,12 @@ import {
   AlertCircle,
   Key,
   Smartphone,
-  Monitor
+  Monitor,
+  RotateCcw,
+  BookmarkPlus,
+  History,
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 import { Product, ProductOption } from '../types';
 import { products as initialProducts } from '../data/products';
@@ -33,6 +38,12 @@ import {
   verifyAdminPin, 
   setAdminPin,
   restoreAllInitialProducts,
+  restoreAllInitialAnnouncements,
+  createRestorePoint,
+  subscribeRestorePoints,
+  restoreFromPoint,
+  deleteRestorePoint,
+  RestorePoint,
   AnnouncementItem 
 } from '../services/storeService';
 import { compressImageFile } from '../utils/imageCompressor';
@@ -55,7 +66,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   // Store data - initialize with initialProducts so it is NEVER empty
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'products' | 'announcements' | 'settings'>('products');
+  const [restorePoints, setRestorePoints] = useState<RestorePoint[]>([]);
+  const [activeTab, setActiveTab] = useState<'products' | 'announcements' | 'restore-points' | 'settings'>('products');
+
+  // Restore Point creation modal state
+  const [isCreatingPointModal, setIsCreatingPointModal] = useState(false);
+  const [newPointName, setNewPointName] = useState('');
+  const [newPointNote, setNewPointNote] = useState('');
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -125,16 +142,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
     if (!isAuthenticated) return;
 
     const unsubProducts = subscribeProducts((list) => {
-      setProducts(list);
+      setProducts(list.filter(Boolean));
     });
 
     const unsubAnnouncements = subscribeAnnouncements((list) => {
-      setAnnouncements(list);
+      setAnnouncements(list.filter(Boolean));
+    });
+
+    const unsubRestorePoints = subscribeRestorePoints((list) => {
+      setRestorePoints(list.filter(Boolean));
     });
 
     return () => {
       unsubProducts();
       unsubAnnouncements();
+      unsubRestorePoints();
     };
   }, [isAuthenticated]);
 
@@ -341,7 +363,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   // Restore all initial catalog products into Firestore
   const handleRestoreProducts = async () => {
     const confirm = window.confirm(
-      '¿Deseas REVERTIR TODOS LOS CAMBIOS y volver al catálogo original de 53 productos?\n\nEsto reestablecerá todos los precios, nombres y fotos originales de fábrica, y quitará cualquier producto de prueba que hayas agregado.'
+      '¿Deseas REVERTIR TODOS LOS CAMBIOS DE PRODUCTOS y volver al catálogo original de 53 productos?\n\nEsto reestablecerá todos los precios, nombres y fotos originales de fábrica, y quitará cualquier producto nuevo que hayas agregado.'
     );
     if (!confirm) return;
 
@@ -353,6 +375,80 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       alert('Error al reestablecer catálogo: ' + (err?.message || 'Error'));
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Restore all initial announcements (banners) into Firestore
+  const handleRestoreAnnouncements = async () => {
+    const confirm = window.confirm(
+      '¿Deseas REVERTIR TODOS LOS CAMBIOS DE LAS NOVEDADES y volver a las 3 promociones originales de fábrica?\n\n1. Miércoles: 10% de Descuento\n2. ¡Envío Gratis en tu Compra!\n3. ¡Atención Revendedores!\n\nEsto reestablecerá textos, fotos y quitará banners nuevos.'
+    );
+    if (!confirm) return;
+
+    setIsProcessing(true);
+    try {
+      const count = await restoreAllInitialAnnouncements(true);
+      showToast(`✅ ¡Novedades reestablecidas! ${count} banners originales restaurados.`);
+    } catch (err: any) {
+      alert('Error al reestablecer novedades: ' + (err?.message || 'Error'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Create custom Restore Point
+  const handleCreateRestorePoint = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsProcessing(true);
+    try {
+      const pt = await createRestorePoint(newPointName, newPointNote);
+      showToast(`💾 ¡Punto de restauración "${pt.name}" guardado exitosamente!`);
+      setNewPointName('');
+      setNewPointNote('');
+      setIsCreatingPointModal(false);
+    } catch (err: any) {
+      alert('Error al guardar punto de restauración: ' + (err?.message || 'Error'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Apply a Restore Point
+  const handleApplyRestorePoint = async (point: RestorePoint) => {
+    const formattedDate = new Date(point.createdAt).toLocaleString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const confirm = window.confirm(
+      `¿Deseas REVERTIR LA TIENDA al punto guardado:\n"${point.name}"?\n\nFecha de guardado: ${formattedDate}\nProductos a restaurar: ${point.productCount}\nNovedades a restaurar: ${point.announcementCount}\n\nLos productos y novedades de la tienda volverán exactamente al estado de ese momento.`
+    );
+    if (!confirm) return;
+
+    setIsProcessing(true);
+    try {
+      const res = await restoreFromPoint(point);
+      showToast(`🔄 ¡Tienda revertida exitosamente! Se restauraron ${res.productsCount} productos y ${res.announcementsCount} novedades.`);
+    } catch (err: any) {
+      alert('Error al restaurar punto: ' + (err?.message || 'Error'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Delete a Restore Point
+  const handleDeleteRestorePoint = async (point: RestorePoint) => {
+    const confirm = window.confirm(`¿Estás seguro de eliminar el punto de restauración "${point.name}"?`);
+    if (!confirm) return;
+
+    try {
+      await deleteRestorePoint(point.id);
+      showToast(`🗑️ Punto de restauración eliminado.`);
+    } catch (err: any) {
+      alert('Error al eliminar punto: ' + (err?.message || 'Error'));
     }
   };
 
@@ -605,6 +701,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setIsCreatingPointModal(true)}
+              className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Guardar punto de restauración actual"
+            >
+              <BookmarkPlus className="w-4 h-4 text-emerald-600" />
+              <span className="hidden sm:inline">Guardar Punto</span>
+            </button>
+
+            <button
               onClick={onBackToStore}
               className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-colors cursor-pointer"
             >
@@ -647,6 +752,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
           >
             <Megaphone className="w-4 h-4" />
             <span>Novedades & Ofertas ({announcements.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('restore-points')}
+            className={`px-4 py-2 rounded-xl font-black text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'restore-points'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            <span>Puntos de Restauración ({restorePoints.length})</span>
           </button>
 
           <button
@@ -846,13 +963,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                 </p>
               </div>
 
-              <button
-                onClick={startAddAnnouncement}
-                className="py-3 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-md shadow-emerald-600/25 flex items-center gap-2 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Agregar Novedad</span>
-              </button>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  onClick={handleRestoreAnnouncements}
+                  disabled={isProcessing}
+                  title="Revertir cambios de novedades y volver a las 3 promociones originales de fábrica"
+                  className="py-3 px-4 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs sm:text-sm rounded-2xl flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
+                  <span>Revertir Novedades (Originales 3)</span>
+                </button>
+
+                <button
+                  onClick={startAddAnnouncement}
+                  className="py-3 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-2xl shadow-md shadow-emerald-600/25 flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Agregar Novedad</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -908,7 +1037,230 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 3: SETTINGS / CHANGE PIN                                  */}
+        {/* TAB 3: RESTORE POINTS & BACKUPS                               */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === 'restore-points' && (
+          <div className="space-y-6">
+
+            {/* Header Card */}
+            <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold uppercase tracking-wider mb-3 border border-purple-400/20">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Seguridad y Respaldos</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-white">
+                  Puntos de Restauración y Reversión
+                </h2>
+                <p className="text-sm text-purple-200 mt-1 leading-relaxed">
+                  Guardá una copia completa del catálogo y las novedades antes de hacer cambios. Podés volver a cualquier punto guardado o a los originales de fábrica con 1 solo clic.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsCreatingPointModal(true)}
+                className="py-3.5 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center gap-2.5 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+              >
+                <BookmarkPlus className="w-5 h-5" />
+                <span>+ Guardar Punto Actual</span>
+              </button>
+            </div>
+
+            {/* Resumen de Estado Actual */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Package className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase text-slate-400">Productos Activos</p>
+                  <p className="text-xl font-black text-slate-900">{products.length} productos</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Megaphone className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase text-slate-400">Novedades Activas</p>
+                  <p className="text-xl font-black text-slate-900">{announcements.length} promociones</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <History className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase text-slate-400">Puntos Guardados</p>
+                  <p className="text-xl font-black text-slate-900">{restorePoints.length} copias</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Lista de Puntos Personalizados Guardados */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Mis Puntos de Restauración Guardados</h3>
+                  <p className="text-xs text-slate-500">
+                    Elegí un punto guardado para revertir los productos y promociones a esa versión exacta.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsCreatingPointModal(true)}
+                  className="text-xs font-bold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-3.5 py-2 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Nuevo Punto</span>
+                </button>
+              </div>
+
+              {restorePoints.length === 0 ? (
+                <div className="text-center py-12 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <BookmarkPlus className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-700">Aún no creaste ningún punto de restauración</p>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-4">
+                    Guardá una copia del estado actual para poder experimentar tranquilo y volver atrás si lo necesitás.
+                  </p>
+                  <button
+                    onClick={() => setIsCreatingPointModal(true)}
+                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black shadow-md shadow-purple-600/20 cursor-pointer"
+                  >
+                    Guardar Punto de Restauración Ahora
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {restorePoints.map((point) => (
+                    <div
+                      key={point.id}
+                      className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-purple-300 hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-base font-black text-slate-900 leading-snug">{point.name}</h4>
+                          <span className="text-[11px] font-bold text-slate-400 shrink-0 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(point.createdAt).toLocaleString('es-AR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+
+                        {point.note && (
+                          <p className="text-xs text-slate-600 mt-1 italic">
+                            "{point.note}"
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-2 mt-3 flex-wrap">
+                          <span className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-[11px] font-black">
+                            📦 {point.productCount} productos
+                          </span>
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[11px] font-black">
+                            📢 {point.announcementCount} novedades
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 mt-5 pt-3 border-t border-slate-200/80">
+                        <button
+                          onClick={() => handleApplyRestorePoint(point)}
+                          disabled={isProcessing}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-black rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RotateCcw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin' : ''}`} />
+                          <span>Revertir a este punto</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteRestorePoint(point)}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                          title="Eliminar este punto"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Puntos Originales de Fábrica */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Puntos de Restauración de Fábrica</h3>
+                <p className="text-xs text-slate-500">
+                  Valores predeterminados oficiales para volver a empezar en limpio.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Fábrica Productos */}
+                <div className="p-5 rounded-2xl border border-amber-200 bg-amber-50/50 flex flex-col justify-between">
+                  <div>
+                    <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-amber-200 text-amber-900">
+                      Catálogo Oficial
+                    </span>
+                    <h4 className="text-base font-black text-slate-900 mt-2">
+                      53 Productos Originales de Fábrica
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Restaura todos los precios base, fotos de local, opciones de litros/unidades y descripciones oficiales de Limpieza La Laguna.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-amber-200/80">
+                    <button
+                      onClick={handleRestoreProducts}
+                      disabled={isProcessing}
+                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin' : ''}`} />
+                      <span>Revertir Productos (Originales 53)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Fábrica Novedades */}
+                <div className="p-5 rounded-2xl border border-pink-200 bg-pink-50/50 flex flex-col justify-between">
+                  <div>
+                    <span className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-pink-200 text-pink-900">
+                      Banners Oficiales
+                    </span>
+                    <h4 className="text-base font-black text-slate-900 mt-2">
+                      3 Novedades Originales de Fábrica
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Restaura los 3 banners principales: Promo Miércoles 10% Descuento, Envío Gratis y Atención Revendedores.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-pink-200/80">
+                    <button
+                      onClick={handleRestoreAnnouncements}
+                      disabled={isProcessing}
+                      className="w-full py-2.5 bg-pink-600 hover:bg-pink-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin' : ''}`} />
+                      <span>Revertir Novedades (Originales 3)</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* TAB 4: SETTINGS / CHANGE PIN                                  */}
         {/* ------------------------------------------------------------- */}
         {activeTab === 'settings' && (
           <div className="max-w-xl mx-auto bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200">
@@ -1088,7 +1440,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                 </label>
 
                 <div className="flex items-center gap-4">
-                  {productForm.imageUrl && (
+                  {productForm?.imageUrl && (
                     <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0 shadow-sm">
                       <img 
                         src={productForm.imageUrl} 
@@ -1104,7 +1456,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                       onClick={() => setImagePickerTarget({
                         isOpen: true,
                         type: 'product-form',
-                        currentUrl: productForm.imageUrl || '',
+                        currentUrl: productForm?.imageUrl || '',
                         title: 'Elegir Foto del Producto',
                         subtitle: device.isComputer 
                           ? 'Seleccionar de tus carpetas de la compu o del catálogo del local' 
@@ -1118,7 +1470,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
 
                     <input
                       type="text"
-                      value={productForm.imageUrl || ''}
+                      value={productForm?.imageUrl || ''}
                       onChange={(e) => setProductForm(prev => ({ ...prev, imageUrl: e.target.value }))}
                       placeholder="O pegar URL de imagen aquí..."
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-500"
@@ -1236,7 +1588,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                 </label>
 
                 <div className="flex items-center gap-4">
-                  {announcementForm.imageUrl && (
+                  {announcementForm?.imageUrl && (
                     <div className="w-24 h-16 rounded-xl overflow-hidden border border-slate-200 bg-white shrink-0 shadow-sm">
                       <img 
                         src={announcementForm.imageUrl} 
@@ -1252,7 +1604,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                       onClick={() => setImagePickerTarget({
                         isOpen: true,
                         type: 'announcement-form',
-                        currentUrl: announcementForm.imageUrl || '',
+                        currentUrl: announcementForm?.imageUrl || '',
                         title: 'Elegir Foto del Banner',
                         subtitle: device.isComputer 
                           ? 'Seleccionar de tus carpetas de la compu o del catálogo del local' 
@@ -1266,7 +1618,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
 
                     <input
                       type="text"
-                      value={announcementForm.imageUrl || ''}
+                      value={announcementForm?.imageUrl || ''}
                       onChange={(e) => setAnnouncementForm(prev => ({ ...prev, imageUrl: e.target.value }))}
                       placeholder="O pegar URL de imagen..."
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-blue-500"
@@ -1298,6 +1650,87 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
 
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL: CREAR PUNTO DE RESTAURACIÓN                            */}
+      {/* ------------------------------------------------------------- */}
+      {isCreatingPointModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <BookmarkPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 leading-tight">Guardar Punto</h3>
+                  <p className="text-xs text-slate-500">Copia de seguridad del catálogo</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreatingPointModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateRestorePoint} className="space-y-4 mt-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                  Nombre del Punto (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={newPointName}
+                  onChange={(e) => setNewPointName(e.target.value)}
+                  placeholder={`Ej: Copia antes del aumento (${products.length} productos)`}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-purple-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                  Nota o Descripción (Opcional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={newPointNote}
+                  onChange={(e) => setNewPointNote(e.target.value)}
+                  placeholder="Ej: Guardado antes de cambiar fotos y ofertas del fin de semana..."
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-purple-600"
+                />
+              </div>
+
+              <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 text-xs text-purple-900">
+                <p className="font-bold">Se guardará en este punto:</p>
+                <ul className="mt-1 list-disc list-inside text-[11px] text-purple-800 space-y-0.5">
+                  <li>{products.length} productos con sus fotos, precios y opciones</li>
+                  <li>{announcements.length} promociones con sus fotos y textos</li>
+                </ul>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingPointModal(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-black rounded-xl shadow-md transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <BookmarkPlus className="w-4 h-4" />
+                  <span>{isProcessing ? 'Guardando...' : 'Guardar Punto Ahora'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

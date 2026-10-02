@@ -16,25 +16,27 @@ export function Products() {
 
   useEffect(() => {
     const unsub = subscribeProducts((liveProducts) => {
-      if (liveProducts && liveProducts.length > 0) {
-        setProductList(liveProducts);
+      if (liveProducts && Array.isArray(liveProducts)) {
+        setProductList(liveProducts.filter(Boolean));
       }
     });
     return () => unsub();
   }, []);
 
   const categories = useMemo(() => {
-    const unique = Array.from(new Set(productList.map(p => p.category).filter(Boolean))) as string[];
+    const valid = productList.filter(Boolean);
+    const unique = Array.from(new Set(valid.map(p => p?.category).filter(Boolean))) as string[];
     return ['Todos', ...unique];
   }, [productList]);
 
   const filteredProducts = useMemo(() => {
     return productList.filter(p => {
+      if (!p) return false;
       const matchCat = selectedCategory === 'Todos' || p.category === selectedCategory;
       const matchSearch = searchTerm.trim() === '' || 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.includes && p.includes.some(inc => inc.toLowerCase().includes(searchTerm.toLowerCase())));
+        p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.includes && p.includes.some(inc => inc?.toLowerCase().includes(searchTerm.toLowerCase())));
       return matchCat && matchSearch;
     });
   }, [productList, selectedCategory, searchTerm]);

@@ -90,6 +90,38 @@
           "description": "ISO timestamp of last update"
         }
       }
+    },
+    "RestorePoint": {
+      "title": "RestorePoint",
+      "description": "Backup snapshot to revert products and announcements",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the restore point"
+        },
+        "name": {
+          "type": "string",
+          "description": "Friendly name of the restore point"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional notes or reason for saving the restore point"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when the snapshot was created"
+        },
+        "productCount": {
+          "type": "number",
+          "description": "Total count of products saved in this point"
+        },
+        "announcementCount": {
+          "type": "number",
+          "description": "Total count of announcements saved in this point"
+        }
+      },
+      "required": ["id", "name", "createdAt"]
     }
   },
   "firestore": {
@@ -104,6 +136,10 @@
     "/settings/{settingId}": {
       "schema": "Settings",
       "description": "Store settings"
+    },
+    "/restore_points/{pointId}": {
+      "schema": "RestorePoint",
+      "description": "Saved restore points to roll back store changes"
     }
   }
 }
