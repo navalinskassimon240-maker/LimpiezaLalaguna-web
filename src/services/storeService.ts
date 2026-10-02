@@ -6,8 +6,7 @@ import {
   onSnapshot, 
   getDoc,
   getDocs,
-  query,
-  orderBy
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Product } from '../types';
@@ -38,6 +37,44 @@ let isSeedingProducts = false;
 let isSeedingAnnouncements = false;
 
 /**
+ * Restores all initial products into Firestore using batch operations.
+ * When wipeExtras is true, also deletes any created test products not in the original catalog.
+ */
+export async function restoreAllInitialProducts(wipeExtras: boolean = true): Promise<number> {
+  try {
+    const productsRef = collection(db, PRODUCTS_COLLECTION);
+    const existingSnap = await getDocs(productsRef);
+    const initialIds = new Set(initialProducts.map(p => p.id));
+
+    const batch = writeBatch(db);
+
+    // Remove any created products that do not belong to the original catalog
+    if (wipeExtras) {
+      existingSnap.docs.forEach((docSnap) => {
+        if (!initialIds.has(docSnap.id)) {
+          batch.delete(docSnap.ref);
+        }
+      });
+    }
+
+    // Overwrite every product back to its exact initial state
+    for (const prod of initialProducts) {
+      const ref = doc(db, PRODUCTS_COLLECTION, prod.id);
+      batch.set(ref, {
+        ...prod,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    await batch.commit();
+    return initialProducts.length;
+  } catch (err) {
+    console.error('Error al restaurar catálogo inicial en Firestore:', err);
+    throw err;
+  }
+}
+
+/**
  * Real-time subscription to products.
  * Automatically seeds the database from `initialProducts` if Firestore is empty.
  */
@@ -47,29 +84,23 @@ export function subscribeProducts(
 ): () => void {
   const productsRef = collection(db, PRODUCTS_COLLECTION);
 
+  // Immediately broadcast initialProducts as initial cache
+  onUpdate(initialProducts);
+
   const unsubscribe = onSnapshot(
     productsRef,
     async (snapshot) => {
       if (snapshot.empty && !isSeedingProducts) {
         isSeedingProducts = true;
         try {
-          // Check if really empty
-          const checkSnap = await getDocs(productsRef);
-          if (checkSnap.empty) {
-            console.log('Sembrando catálogo inicial de productos en Firestore...');
-            for (const prod of initialProducts) {
-              await setDoc(doc(db, PRODUCTS_COLLECTION, prod.id), {
-                ...prod,
-                updatedAt: new Date().toISOString()
-              });
-            }
-          }
+          console.log('Sembrando catálogo inicial de 54 productos en Firestore...');
+          await restoreAllInitialProducts();
         } catch (e) {
           console.warn('No se pudo sembrar el catálogo en Firestore:', e);
-          onUpdate(initialProducts);
         } finally {
           isSeedingProducts = false;
         }
+        onUpdate(initialProducts);
         return;
       }
 

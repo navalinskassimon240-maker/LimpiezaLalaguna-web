@@ -20,6 +20,7 @@ import {
   Key
 } from 'lucide-react';
 import { Product, ProductOption } from '../types';
+import { products as initialProducts } from '../data/products';
 import { 
   subscribeProducts, 
   saveProduct, 
@@ -29,6 +30,7 @@ import {
   deleteAnnouncement, 
   verifyAdminPin, 
   setAdminPin,
+  restoreAllInitialProducts,
   AnnouncementItem 
 } from '../services/storeService';
 import { compressImageFile } from '../utils/imageCompressor';
@@ -46,8 +48,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   const [pinError, setPinError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // Store data
-  const [products, setProducts] = useState<Product[]>([]);
+  // Store data - initialize with initialProducts so it is NEVER empty
+  const [products, setProducts] = useState<Product[]>(initialProducts);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [activeTab, setActiveTab] = useState<'products' | 'announcements' | 'settings'>('products');
 
@@ -281,6 +283,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       showToast(`🗑️ Producto "${prod.name}" eliminado.`);
     } catch (err: any) {
       alert('Error al eliminar: ' + err?.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Restore all initial catalog products into Firestore
+  const handleRestoreProducts = async () => {
+    const confirm = window.confirm(
+      '¿Deseas REVERTIR TODOS LOS CAMBIOS y volver al catálogo original de 53 productos?\n\nEsto reestablecerá todos los precios, nombres y fotos originales de fábrica, y quitará cualquier producto de prueba que hayas agregado.'
+    );
+    if (!confirm) return;
+
+    setIsProcessing(true);
+    try {
+      const count = await restoreAllInitialProducts(true);
+      showToast(`✅ ¡Catálogo reestablecido! ${count} productos originales restaurados.`);
+    } catch (err: any) {
+      alert('Error al reestablecer catálogo: ' + (err?.message || 'Error'));
     } finally {
       setIsProcessing(false);
     }
@@ -594,13 +614,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
             {/* Actions Bar: Add Product & Search */}
             <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
               
-              <button
-                onClick={startAddProduct}
-                className="py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base rounded-2xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Agregar Producto Nuevo</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  onClick={startAddProduct}
+                  className="py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base rounded-2xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Agregar Producto Nuevo</span>
+                </button>
+
+                <button
+                  onClick={handleRestoreProducts}
+                  disabled={isProcessing}
+                  title="Revertir todos los cambios y volver a los 53 productos originales de fábrica"
+                  className="py-3.5 px-4 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs sm:text-sm rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
+                  <span>Revertir Cambios (Originales 53)</span>
+                </button>
+              </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-2xl">
                 {/* Search Bar */}
