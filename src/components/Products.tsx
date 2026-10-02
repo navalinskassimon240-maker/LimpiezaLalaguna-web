@@ -95,7 +95,7 @@ export function Products() {
             <p className="text-sm text-slate-500 mt-1">Intenta con otra búsqueda o categoría</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             <AnimatePresence mode="popLayout">
               {filteredProducts.map((product) => {
                 const isCombo = Boolean(product.category === 'Combos y Promos' || (product.includes && product.includes.length > 0));

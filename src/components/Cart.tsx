@@ -95,11 +95,11 @@ export function Cart() {
     const whatsappUrl = createWhatsAppUrl(siteConfig.whatsapp.numero, text);
     
     setTimeout(() => {
-      window.open(whatsappUrl, '_blank');
+      window.location.href = whatsappUrl;
       clearCart();
       setIsProcessing(false);
       handleClose();
-    }, 600);
+    }, 400);
   };
 
   return createPortal(
@@ -174,7 +174,7 @@ export function Cart() {
                           >
                             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-xl overflow-hidden shrink-0 border border-slate-100">
                               <img 
-                                src={item.imageUrl} 
+                                src={item.imageUrl?.trim() || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800'} 
                                 alt={item.name} 
                                 onError={(e) => {
                                   e.currentTarget.onerror = null;

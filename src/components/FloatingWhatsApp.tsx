@@ -11,7 +11,7 @@ export function FloatingWhatsApp() {
   const whatsappUrl = createWhatsAppUrl(siteConfig.whatsapp.numero, defaultMessage);
 
   return (
-    <div className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] sm:bottom-7 sm:right-7 z-40 flex flex-col items-end pointer-events-auto select-none">
+    <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:bottom-7 right-[calc(1rem+env(safe-area-inset-right,0px))] md:right-7 z-40 flex flex-col items-end pointer-events-auto select-none">
       {/* Floating Mini Bubble / Tooltip */}
       <AnimatePresence>
         {isTooltipOpen && (

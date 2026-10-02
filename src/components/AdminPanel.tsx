@@ -17,7 +17,9 @@ import {
   ArrowLeft,
   RefreshCw,
   AlertCircle,
-  Key
+  Key,
+  Smartphone,
+  Monitor
 } from 'lucide-react';
 import { Product, ProductOption } from '../types';
 import { products as initialProducts } from '../data/products';
@@ -34,6 +36,8 @@ import {
   AnnouncementItem 
 } from '../services/storeService';
 import { compressImageFile } from '../utils/imageCompressor';
+import { useDevice } from '../utils/useDevice';
+import { ImagePickerModal } from './ImagePickerModal';
 
 interface AdminPanelProps {
   onBackToStore: () => void;
@@ -91,7 +95,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   const [newPinValue, setNewPinValue] = useState('');
   const [pinChangeSuccess, setPinChangeSuccess] = useState(false);
 
-  // Hidden file input refs for direct photo uploads
+  // Device detection (celular vs computadora)
+  const device = useDevice();
+
+  // Multi-device Image Picker Modal State
+  const [imagePickerTarget, setImagePickerTarget] = useState<{
+    isOpen: boolean;
+    type: 'direct-product' | 'product-form' | 'announcement-form';
+    productId?: string;
+    currentUrl?: string;
+    title?: string;
+    subtitle?: string;
+  }>({
+    isOpen: false,
+    type: 'direct-product'
+  });
+
+  // Hidden file input refs for direct photo uploads fallback
   const directImageInputRef = useRef<HTMLInputElement>(null);
   const [targetProductIdForPhoto, setTargetProductIdForPhoto] = useState<string | null>(null);
 
@@ -145,12 +165,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
     sessionStorage.removeItem('laguna_admin_auth');
   };
 
-  // Direct photo change from product card
+  // Multi-device Image Selection handler
   const triggerDirectPhotoUpload = (productId: string) => {
-    setTargetProductIdForPhoto(productId);
-    if (directImageInputRef.current) {
-      directImageInputRef.current.value = '';
-      directImageInputRef.current.click();
+    const prod = products.find(p => p.id === productId);
+    setImagePickerTarget({
+      isOpen: true,
+      type: 'direct-product',
+      productId,
+      currentUrl: prod?.imageUrl || '',
+      title: prod ? `Foto de "${prod.name}"` : 'Cambiar Foto',
+      subtitle: device.isComputer
+        ? 'Elegí una imagen de tus carpetas o del catálogo del local'
+        : 'Elegí de la galería del celular, sacá una foto o elegí del catálogo'
+    });
+  };
+
+  const handleImagePicked = async (imageUrl: string) => {
+    if (imagePickerTarget.type === 'direct-product' && imagePickerTarget.productId) {
+      const prod = products.find(p => p.id === imagePickerTarget.productId);
+      if (prod) {
+        setIsProcessing(true);
+        try {
+          await saveProduct({
+            ...prod,
+            imageUrl
+          });
+          showToast(`✅ Foto de "${prod.name}" actualizada con éxito.`);
+        } catch (err: any) {
+          alert('Error al actualizar la foto: ' + (err?.message || ''));
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    } else if (imagePickerTarget.type === 'product-form') {
+      setProductForm(prev => ({ ...prev, imageUrl }));
+    } else if (imagePickerTarget.type === 'announcement-form') {
+      setAnnouncementForm(prev => ({ ...prev, imageUrl }));
     }
   };
 
@@ -527,14 +577,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
               L
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-base sm:text-lg font-black text-slate-900 leading-none">
                   Administrador La Laguna
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   En Vivo
                 </span>
+                {device.isComputer ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    <Monitor className="w-3 h-3 text-blue-600" />
+                    <span>Modo Compu</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <Smartphone className="w-3 h-3 text-emerald-600" />
+                    <span>Modo Celular</span>
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 Cualquier cambio se guarda y se ve al instante en la web
@@ -1038,16 +1099,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                   )}
 
                   <div className="flex-1 space-y-2">
-                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 hover:border-blue-500 rounded-xl text-xs font-bold text-slate-700 shadow-xs cursor-pointer hover:bg-blue-50 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => setImagePickerTarget({
+                        isOpen: true,
+                        type: 'product-form',
+                        currentUrl: productForm.imageUrl || '',
+                        title: 'Elegir Foto del Producto',
+                        subtitle: device.isComputer 
+                          ? 'Seleccionar de tus carpetas de la compu o del catálogo del local' 
+                          : 'Elegir de la galería de tu celu, tomar foto o del catálogo'
+                      })}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 hover:border-blue-500 rounded-xl text-xs font-bold text-slate-700 shadow-xs cursor-pointer hover:bg-blue-50 transition-colors"
+                    >
                       <Camera className="w-4 h-4 text-blue-600" />
-                      <span>Sacar Foto / Elegir de la Galería</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFormPhotoUpload}
-                        className="hidden"
-                      />
-                    </label>
+                      <span>{device.isComputer ? 'Elegir de mis Carpetas / Catálogo' : 'Galería / Cámara del Celu'}</span>
+                    </button>
 
                     <input
                       type="text"
@@ -1180,16 +1247,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                   )}
 
                   <div className="flex-1 space-y-2">
-                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:border-blue-500 rounded-xl text-xs font-bold text-slate-700 shadow-xs cursor-pointer hover:bg-blue-50 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => setImagePickerTarget({
+                        isOpen: true,
+                        type: 'announcement-form',
+                        currentUrl: announcementForm.imageUrl || '',
+                        title: 'Elegir Foto del Banner',
+                        subtitle: device.isComputer 
+                          ? 'Seleccionar de tus carpetas de la compu o del catálogo del local' 
+                          : 'Elegir de la galería de tu celu, tomar foto o del catálogo'
+                      })}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:border-blue-500 rounded-xl text-xs font-bold text-slate-700 shadow-xs cursor-pointer hover:bg-blue-50 transition-colors"
+                    >
                       <Camera className="w-4 h-4 text-blue-600" />
-                      <span>Subir Foto del Celu/PC</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAnnouncementPhotoUpload}
-                        className="hidden"
-                      />
-                    </label>
+                      <span>{device.isComputer ? 'Elegir de mis Carpetas / Catálogo' : 'Galería / Cámara del Celu'}</span>
+                    </button>
 
                     <input
                       type="text"
@@ -1228,6 +1301,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
           </div>
         </div>
       )}
+
+      {/* Multi-Device Image Picker Modal (Celu: Galería y Cámara | Compu: Carpetas y Drag & Drop) */}
+      <ImagePickerModal
+        isOpen={imagePickerTarget.isOpen}
+        onClose={() => setImagePickerTarget(prev => ({ ...prev, isOpen: false }))}
+        onSelectImage={handleImagePicked}
+        currentImageUrl={imagePickerTarget.currentUrl}
+        title={imagePickerTarget.title}
+        subtitle={imagePickerTarget.subtitle}
+      />
 
     </div>
   );

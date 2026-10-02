@@ -15,6 +15,7 @@ import { Cart } from './components/Cart';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { UpdateNotifier } from './components/UpdateNotifier';
 import { AdminPanel } from './components/AdminPanel';
+import { MobileBottomBar } from './components/MobileBottomBar';
 
 export default function App() {
   const [isAdminView, setIsAdminView] = useState<boolean>(() => {
@@ -75,10 +76,10 @@ export default function App() {
   return (
     <CartProvider>
       <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans selection:bg-blue-200 selection:text-blue-900 scroll-smooth relative overflow-hidden">
-        {/* Fondo sutil */}
+        {/* Lightweight subtle background */}
         <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-b from-blue-50/40 via-white to-slate-50/50" />
         
-        <div className="relative z-10 flex flex-col min-h-screen">
+        <div className="relative z-10 flex flex-col min-h-screen pb-16 md:pb-0">
           <Header />
           <main className="flex-grow">
             <Hero />
@@ -89,6 +90,7 @@ export default function App() {
           <Footer />
           <Cart />
           <FloatingWhatsApp />
+          <MobileBottomBar />
           <UpdateNotifier />
         </div>
       </div>
