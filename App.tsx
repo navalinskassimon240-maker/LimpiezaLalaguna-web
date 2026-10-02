@@ -1,138 +1,97 @@
-import { LagunitaAI } from "./components/LagunitaAI";
-import React, { useState, useMemo, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Header } from './components/Header';
 import { Hero } from './components/Hero';
-import { ProductCard } from './components/ProductCard';
-import { CartDrawer } from './components/CartDrawer';
-import { AIConsultant } from './components/AIConsultant';
-import { AuthModal } from './components/AuthModal';
-import { ProfileModal } from './components/ProfileModal';
+import { Announcements } from './components/Announcements';
+import { Services } from './components/Services';
+import { Products } from './components/Products';
 import { Footer } from './components/Footer';
-import { INITIAL_PRODUCTS } from './constants';
-import { Product, CartItem, ProductCategory, User } from './types';
+import { CartProvider } from './context/CartContext';
+import { Cart } from './components/Cart';
+import { FloatingWhatsApp } from './components/FloatingWhatsApp';
+import { UpdateNotifier } from './components/UpdateNotifier';
+import { AdminPanel } from './components/AdminPanel';
 
-const App: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('lalaguna_inventory');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+export default function App() {
+  const [isAdminView, setIsAdminView] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const hash = window.location.hash.toLowerCase();
+    const pathname = window.location.pathname.toLowerCase();
+    const search = new URLSearchParams(window.location.search);
+    return (
+      hash === '#admin' ||
+      hash === '#/admin' ||
+      hash === '#admin-laguna' ||
+      pathname === '/admin' ||
+      pathname === '/admin-laguna' ||
+      search.has('admin')
+    );
   });
 
-  const [savedAccounts, setSavedAccounts] = useState<User[]>(() => {
-    const saved = localStorage.getItem('lalaguna_accounts');
-    return saved ? JSON.parse(saved) : [];
-  });
-  
-  const [user, setUser] = useState<User | null>(() => {
-    const active = localStorage.getItem('lalaguna_active_user');
-    return active ? JSON.parse(active) : null;
-  });
-
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isAIOpen, setIsAIOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(!user);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<ProductCategory | 'Todos'>('Todos');
-
-  // Sincronizar cambios de inventario desde el admin
   useEffect(() => {
-    const handleStorage = () => {
-      const saved = localStorage.getItem('lalaguna_inventory');
-      if (saved) setProducts(JSON.parse(saved));
+    const handleRouteChange = () => {
+      const hash = window.location.hash.toLowerCase();
+      const pathname = window.location.pathname.toLowerCase();
+      const search = new URLSearchParams(window.location.search);
+      setIsAdminView(
+        hash === '#admin' ||
+        hash === '#/admin' ||
+        hash === '#admin-laguna' ||
+        pathname === '/admin' ||
+        pathname === '/admin-laguna' ||
+        search.has('admin')
+      );
     };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+
+    window.addEventListener('hashchange', handleRouteChange);
+    window.addEventListener('popstate', handleRouteChange);
+    return () => {
+      window.removeEventListener('hashchange', handleRouteChange);
+      window.removeEventListener('popstate', handleRouteChange);
+    };
   }, []);
 
-  const visibleProducts = useMemo(() => {
-    let filtered = products.filter(p => p.stock > 0);
-    if (selectedCategory !== 'Todos') {
-      filtered = filtered.filter(p => p.category === selectedCategory);
+  const handleBackToStore = () => {
+    setIsAdminView(false);
+    if (window.location.hash) {
+      window.location.hash = '';
     }
-    return filtered;
-  }, [products, selectedCategory]);
-
-  const addToCart = (product: Product) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
+    if (window.location.search.includes('admin')) {
+      window.history.pushState({}, '', window.location.pathname);
+    }
+    if (window.location.pathname === '/admin' || window.location.pathname === '/admin-laguna') {
+      window.history.pushState({}, '', '/');
+    }
   };
 
-  const handleLogin = (userData: User) => {
-    setSavedAccounts(prev => {
-      const others = prev.filter(a => a.email !== userData.email);
-      const updated = [...others, userData];
-      localStorage.setItem('lalaguna_accounts', JSON.stringify(updated));
-      return updated;
-    });
-    setUser(userData);
-    localStorage.setItem('lalaguna_active_user', JSON.stringify(userData));
-    setIsAuthOpen(false);
-  };
+  if (isAdminView) {
+    return <AdminPanel onBackToStore={handleBackToStore} />;
+  }
 
   return (
-    <div id="inicio" className="min-h-screen flex flex-col bg-white">
-      <Navbar 
-        user={user}
-        cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)} 
-        onOpenCart={() => setIsCartOpen(true)}
-        onOpenAI={() => setIsAIOpen(true)}
-        onOpenAuth={() => setIsAuthOpen(true)}
-        onOpenProfile={() => setIsProfileOpen(true)}
-      />
-      
-      <main className={`flex-grow transition-all duration-700 ${!user ? 'blur-xl grayscale' : ''}`}>
-        <Hero />
+    <CartProvider>
+      <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans selection:bg-blue-200 selection:text-blue-900 scroll-smooth relative overflow-hidden">
+        {/* Lightweight subtle background */}
+        <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-b from-blue-50/40 via-white to-slate-50/50" />
         
-        <section id="productos" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 scroll-mt-20">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-            <h2 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">Catálogo <span className="text-blue-600">Lalaguna</span></h2>
-            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-              {['Todos', ...Object.values(ProductCategory)].map((cat) => (
-                <button key={cat} onClick={() => setSelectedCategory(cat as any)} className={`px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {visibleProducts.length === 0 ? (
-            <div className="py-20 text-center">
-              <i className="fas fa-box-open text-6xl text-slate-100 mb-4"></i>
-              <p className="text-slate-400 font-bold uppercase tracking-widest">No hay productos disponibles en esta categoría.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {visibleProducts.map(p => <ProductCard key={p.id} product={p} onAddToCart={addToCart} />)}
-            </div>
-          )}
-        </section>
-      </main>
-
-      <Footer />
-
-      
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onUpdateQuantity={(id, delta) => setCart(prev => prev.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + delta)} : i))} onRemove={(id) => setCart(prev => prev.filter(i => i.id !== id))} onClearCart={() => setCart([])} />
-      <AIConsultant isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} user={user} />
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onLogin={handleLogin} />
-      <ProfileModal 
-        isOpen={isProfileOpen} 
-        onClose={() => setIsProfileOpen(false)} 
-        user={user} 
-        savedAccounts={savedAccounts} 
-        products={products}
-        onLogout={() => { setUser(null); localStorage.removeItem('lalaguna_active_user'); setIsAuthOpen(true); setIsProfileOpen(false); }} 
-        onSwitch={(e) => { const u = savedAccounts.find(a => a.email === e); if(u) { setUser(u); localStorage.setItem('lalaguna_active_user', JSON.stringify(u)); } setIsProfileOpen(false); }}
-        onUpdateStock={() => {}} // Ya no se gestiona desde aquí
-        onAddProduct={() => {}} // Ya no se gestiona desde aquí
-        onToggleSub={() => {}} 
-      />
-    </div>
+        <div className="relative z-10 flex flex-col min-h-screen">
+          <Header />
+          <main className="flex-grow">
+            <Hero />
+            <Announcements />
+            <Products />
+            <Services />
+          </main>
+          <Footer />
+          <Cart />
+          <FloatingWhatsApp />
+          <UpdateNotifier />
+        </div>
+      </div>
+    </CartProvider>
   );
-};
-<LagunitaAI />
-export default App;
+}

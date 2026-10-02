@@ -13,7 +13,7 @@ export function Footer() {
           <div className="space-y-4 pr-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 via-teal-500 to-emerald-500 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-md overflow-hidden shrink-0">
-                {siteConfig.marca.logoUrl ? (
+                {siteConfig.marca.logoUrl && siteConfig.marca.logoUrl.trim() !== '' ? (
                   <img 
                     src={siteConfig.marca.logoUrl} 
                     alt={siteConfig.marca.nombrePrincipal}
@@ -115,9 +115,17 @@ export function Footer() {
 
         <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
           <p>© {new Date().getFullYear()} {siteConfig.footer.derechosReservados}</p>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
             <a href="#" className="hover:text-white transition-colors">{siteConfig.footer.enlacePolitica}</a>
             <a href="#" className="hover:text-white transition-colors">{siteConfig.footer.enlaceAvisoLegal}</a>
+            <a 
+              href="#admin" 
+              className="text-slate-500 hover:text-slate-300 transition-colors text-xs flex items-center gap-1 opacity-60 hover:opacity-100"
+              title="Acceso de Administración"
+            >
+              <span>Acceso</span>
+              <span>🔒</span>
+            </a>
           </div>
         </div>
       </div>

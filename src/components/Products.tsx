@@ -1,24 +1,35 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ShoppingBag, ShoppingCart, Eye, Search, Sparkles, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCart } from '../context/CartContext';
 import { ProductModal } from './ProductModal';
 import { Product } from '../types';
 import { siteConfig } from '../data/config';
-import { products } from '../data/products';
+import { products as initialProducts } from '../data/products';
+import { subscribeProducts } from '../services/storeService';
 
 export function Products() {
+  const [productList, setProductList] = useState<Product[]>(initialProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const categories = useMemo(() => {
-    const unique = Array.from(new Set(products.map(p => p.category).filter(Boolean))) as string[];
-    return ['Todos', ...unique];
+  useEffect(() => {
+    const unsub = subscribeProducts((liveProducts) => {
+      if (liveProducts && liveProducts.length > 0) {
+        setProductList(liveProducts);
+      }
+    });
+    return () => unsub();
   }, []);
 
+  const categories = useMemo(() => {
+    const unique = Array.from(new Set(productList.map(p => p.category).filter(Boolean))) as string[];
+    return ['Todos', ...unique];
+  }, [productList]);
+
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    return productList.filter(p => {
       const matchCat = selectedCategory === 'Todos' || p.category === selectedCategory;
       const matchSearch = searchTerm.trim() === '' || 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -26,7 +37,7 @@ export function Products() {
         (p.includes && p.includes.some(inc => inc.toLowerCase().includes(searchTerm.toLowerCase())));
       return matchCat && matchSearch;
     });
-  }, [selectedCategory, searchTerm]);
+  }, [productList, selectedCategory, searchTerm]);
 
   return (
     <section id="productos" className="py-24 bg-transparent relative z-10">
@@ -110,7 +121,7 @@ export function Products() {
                     <div className="aspect-video bg-slate-100 rounded-2xl mb-4 overflow-hidden relative shadow-inner">
                       <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       <img 
-                        src={product.imageUrl} 
+                        src={product.imageUrl?.trim() || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800'} 
                         alt={product.name}
                         onError={(e) => {
                           e.currentTarget.onerror = null;

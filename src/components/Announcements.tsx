@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, X, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { siteConfig } from '../data/config';
+import { subscribeAnnouncements, AnnouncementItem } from '../services/storeService';
 
 interface Novedad {
   id: string;
@@ -11,21 +12,39 @@ interface Novedad {
   subtitle: string;
   imageUrl: string;
   fallbackUrl?: string;
-  whatsappMessage: string;
-  ctaText: string;
+  whatsappMessage?: string;
+  ctaText?: string;
 }
 
 export function Announcements() {
+  const [novedades, setNovedades] = useState<Novedad[]>(siteConfig.novedades.lista as Novedad[]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedNovedad, setSelectedNovedad] = useState<Novedad | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const novedades: Novedad[] = siteConfig.novedades.lista;
+  useEffect(() => {
+    const unsub = subscribeAnnouncements((liveItems) => {
+      if (liveItems && liveItems.length > 0) {
+        setNovedades(liveItems.map(item => ({
+          id: item.id,
+          tag: item.tag,
+          tagColor: item.tagColor,
+          title: item.title,
+          subtitle: item.subtitle || item.description || '',
+          imageUrl: item.imageUrl,
+          fallbackUrl: item.fallbackUrl,
+          whatsappMessage: item.whatsappMessage || '',
+          ctaText: item.ctaText || 'Consultar'
+        })));
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // Auto-slide to the right every 4.5 seconds
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || novedades.length === 0) return;
 
     timerRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % novedades.length);
@@ -87,7 +106,7 @@ export function Announcements() {
                 onClick={() => setSelectedNovedad(current)}
               >
                 <img
-                  src={current.imageUrl}
+                  src={current.imageUrl?.trim() || current.fallbackUrl || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=1400'}
                   alt={current.title}
                   referrerPolicy="no-referrer"
                   onError={(e) => {
@@ -187,7 +206,7 @@ export function Announcements() {
                 }`}
               >
                 <img
-                  src={item.imageUrl}
+                  src={item.imageUrl?.trim() || item.fallbackUrl || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=400'}
                   alt={item.title}
                   referrerPolicy="no-referrer"
                   onError={(e) => {
@@ -236,7 +255,7 @@ export function Announcements() {
               
               <div className="w-full bg-slate-950 flex items-center justify-center overflow-hidden shrink min-h-0">
                 <img 
-                  src={selectedNovedad.imageUrl} 
+                  src={selectedNovedad.imageUrl?.trim() || selectedNovedad.fallbackUrl || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=1400'} 
                   alt={selectedNovedad.title}
                   referrerPolicy="no-referrer"
                   onError={(e) => {

@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Product item for Limpieza La Laguna catalog",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the product"
+        },
+        "name": {
+          "type": "string",
+          "description": "Product name"
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category"
+        },
+        "description": {
+          "type": "string",
+          "description": "Product description"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Image URL or data URI"
+        },
+        "basePrice": {
+          "type": "number",
+          "description": "Base price in Argentine pesos"
+        },
+        "unitType": {
+          "type": "string",
+          "description": "Unit type (litros, unidades, etc.)"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["id", "name", "category", "basePrice"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Promotions and announcements for the store",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the announcement"
+        },
+        "title": {
+          "type": "string",
+          "description": "Announcement title"
+        },
+        "description": {
+          "type": "string",
+          "description": "Announcement description"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Image URL or data URI"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Tag badge text"
+        },
+        "tagColor": {
+          "type": "string",
+          "description": "CSS color classes for the tag"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["id", "title"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Store admin and configuration settings",
+      "type": "object",
+      "properties": {
+        "adminPin": {
+          "type": "string",
+          "description": "Access pin for store admin"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Catalog products readable by all visitors and editable by admin"
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "Store news and promos readable by all visitors and editable by admin"
+    },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "Store settings"
+    }
+  }
+}
