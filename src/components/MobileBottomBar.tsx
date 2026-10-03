@@ -3,7 +3,6 @@ import { Home, ShoppingBag, Flame, ShoppingCart, MessageCircle } from 'lucide-re
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
 
-// Vibración táctil integrada (sin depender de ningún archivo externo)
 function triggerHaptic(type: 'light' | 'medium' | 'success' | 'warning' = 'light') {
   if (typeof window !== 'undefined' && 'vibrate' in navigator) {
     try {
