@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ShoppingBag, ShoppingCart, Eye, Search, Sparkles, CheckCircle2, Ban } from 'lucide-react';
+import { ShoppingBag, ShoppingCart, Eye, Search, Sparkles, CheckCircle2, Ban, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCart } from '../context/CartContext';
 import { ProductModal } from './ProductModal';
@@ -219,6 +219,19 @@ export function Products() {
                         </div>
                       )}
 
+                      {/* Multi-option preview for products with multiple items/fragrances in photo */}
+                      {!isCombo && product.options && product.options.length > 1 && (
+                        <div className="mb-3 p-2 bg-blue-50/70 rounded-xl border border-blue-200/60 text-[11px] text-blue-900 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 font-bold text-blue-800 truncate">
+                            <Layers className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span className="truncate">{product.options.length} opciones para elegir</span>
+                          </div>
+                          <span className="text-[10px] font-extrabold text-blue-600 bg-white px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                            Elegir
+                          </span>
+                        </div>
+                      )}
+
                       <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -242,7 +255,13 @@ export function Products() {
                         ) : (
                           <>
                             <ShoppingCart className="w-4 h-4" />
-                            <span>{isCombo ? 'Comprar Combo Completo' : 'Comprar Producto'}</span>
+                            <span>
+                              {isCombo 
+                                ? 'Comprar Combo Completo' 
+                                : product.options && product.options.length > 1 
+                                ? 'Elegir Opción y Comprar' 
+                                : 'Comprar Producto'}
+                            </span>
                           </>
                         )}
                       </motion.button>

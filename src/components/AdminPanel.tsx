@@ -33,7 +33,9 @@ import {
   Clock,
   Ban,
   PauseCircle,
-  PlayCircle
+  PlayCircle,
+  Layers,
+  ListPlus
 } from 'lucide-react';
 import { Product, ProductOption } from '../types';
 import { products as initialProducts } from '../data/products';
@@ -471,7 +473,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       tag: '',
       tagColor: 'bg-emerald-600 text-white',
       outOfStock: false,
-      options: [{ label: 'Bidón x 5 Lts', price: 0 }]
+      options: [{ label: 'Bidón x 5 Lts', price: 0 }],
+      includes: []
     });
     setCustomTagHex('');
     setIsCreatingProduct(true);
@@ -485,7 +488,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       tag: prod.tag || '',
       tagColor: prod.tagColor || 'bg-emerald-600 text-white',
       outOfStock: Boolean(prod.outOfStock),
-      options: prod.options && prod.options.length > 0 ? [...prod.options] : [{ label: 'Unidad', price: prod.basePrice }]
+      options: prod.options && prod.options.length > 0 
+        ? prod.options.map(o => ({ label: o.label, price: o.price })) 
+        : [{ label: prod.unitType === 'unidades' ? 'Unidad' : 'Bidón x 5 Lts', price: prod.basePrice }],
+      includes: prod.includes ? [...prod.includes] : []
     });
     setCustomTagHex(prod.tagColor && prod.tagColor.startsWith('#') ? prod.tagColor : '');
     setEditingProduct(prod);
@@ -505,21 +511,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       const id = productForm.id || 'prod-' + Date.now();
       const basePrice = Number(productForm.basePrice) || 0;
       
+      // Clean and sanitize options
+      const rawOptions = productForm.options || [];
+      const validOptions: ProductOption[] = rawOptions
+        .filter(opt => opt && typeof opt.label === 'string' && opt.label.trim() !== '')
+        .map(opt => ({
+          label: opt.label.trim(),
+          price: typeof opt.price === 'number' && !isNaN(opt.price) ? opt.price : basePrice
+        }));
+
+      const finalOptions = validOptions.length > 0
+        ? validOptions
+        : [{ label: productForm.unitType === 'unidades' ? 'Unidad' : 'Bidón x 5 Lts', price: basePrice }];
+
+      // Clean and sanitize includes for combos
+      const rawIncludes = productForm.includes || [];
+      const finalIncludes = rawIncludes
+        .filter(inc => typeof inc === 'string' && inc.trim() !== '')
+        .map(inc => inc.trim());
+
       const newProduct: Product = {
         id,
         name: productForm.name.trim(),
         category: productForm.category?.trim() || 'Productos de Limpieza',
         description: productForm.description?.trim() || '',
         imageUrl: productForm.imageUrl?.trim() || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800',
-        basePrice,
+        basePrice: finalOptions[0]?.price && basePrice === 0 ? finalOptions[0].price : basePrice,
         unitType: productForm.unitType === 'unidades' ? 'unidades' : 'litros',
+        options: finalOptions,
+        includes: finalIncludes,
         tag: productForm.tag ? productForm.tag.trim() : '',
         tagColor: (customTagHex.trim() || productForm.tagColor?.trim()) || '',
         outOfStock: Boolean(productForm.outOfStock),
-        createdAt: isCreatingProduct ? new Date().toISOString() : productForm.createdAt || new Date().toISOString(),
-        options: productForm.options && productForm.options.length > 0 
-          ? productForm.options 
-          : [{ label: productForm.unitType === 'unidades' ? 'Unidad' : 'Bidón x 5 Lts', price: basePrice }]
+        createdAt: isCreatingProduct ? new Date().toISOString() : productForm.createdAt || new Date().toISOString()
       };
 
       await saveProduct(newProduct);
@@ -1268,6 +1292,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                           ))}
                         </div>
                       )}
+                      {/* Options / Variants summary */}
+                      {prod.options && prod.options.length > 1 && (
+                        <div className="mt-2.5 p-2 bg-blue-50/70 rounded-xl border border-blue-200/60 text-[11px] text-blue-900">
+                          <div className="flex items-center gap-1 font-bold text-blue-800">
+                            <Layers className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span>{prod.options.length} opciones en la foto:</span>
+                          </div>
+                          <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-1 font-medium">
+                            {prod.options.map(o => o.label).join(' • ')}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Includes preview for combos */}
+                      {prod.includes && prod.includes.length > 0 && (
+                        <div className="mt-2.5 p-2 bg-emerald-50/70 rounded-xl border border-emerald-200/60 text-[11px] text-emerald-900">
+                          <div className="flex items-center gap-1 font-bold text-emerald-800">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>{prod.includes.length} artículos en el pack:</span>
+                          </div>
+                          <p className="text-[10px] text-emerald-700 mt-0.5 line-clamp-1 font-medium">
+                            {prod.includes.join(' + ')}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Pricing & Management Actions */}
@@ -1896,6 +1945,229 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                     </label>
                   </div>
                 </div>
+
+                {/* ------------------------------------------------------------- */}
+                {/* 🧩 OPCIONES / VARIANTES / PRODUCTOS EN LA FOTO                */}
+                {/* ------------------------------------------------------------- */}
+                <div className="p-4 bg-blue-50/50 border border-blue-200/80 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-blue-600" />
+                      <span>Opciones, Variantes o Productos en la Foto</span>
+                    </label>
+                    <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-0.5 rounded-full">
+                      {(productForm.options?.length || 0)} {(productForm.options?.length || 0) === 1 ? 'opción' : 'opciones'}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Si tu foto muestra <strong>2 o más productos</strong> (por ejemplo: un <em>Bidón de Suavizante</em> y un <em>Jabón Líquido</em>), o si ofrecés distintas presentaciones/aromas con sus propios precios, configuralos acá para que el cliente elija cuál comprar.
+                  </p>
+
+                  {/* Plantillas Rápidas con 1 Clic */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Cargar rápido:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const bp = Number(productForm.basePrice) || 5200;
+                        setProductForm(prev => ({
+                          ...prev,
+                          options: [
+                            { label: 'Bidón de Suavizante para Ropa (5L)', price: bp },
+                            { label: 'Jabón Líquido para Ropa (5L)', price: bp }
+                          ]
+                        }));
+                      }}
+                      className="px-2.5 py-1 bg-white hover:bg-blue-100/60 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <Sparkles className="w-3 h-3 text-blue-600" />
+                      <span>Foto con 2 Productos (Suavizante / Jabón)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const bp = Number(productForm.basePrice) || 0;
+                        setProductForm(prev => ({
+                          ...prev,
+                          options: [
+                            { label: 'Aroma Blanco Clásico (5L)', price: bp },
+                            { label: 'Aroma Celeste Frescura (5L)', price: bp },
+                            { label: 'Aroma Floral / Lila (5L)', price: bp }
+                          ]
+                        }));
+                      }}
+                      className="px-2.5 py-1 bg-white hover:bg-purple-100/60 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <Sparkles className="w-3 h-3 text-purple-600" />
+                      <span>3 Variedades / Aromas</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const bp = Number(productForm.basePrice) || 0;
+                        setProductForm(prev => ({
+                          ...prev,
+                          options: [
+                            { label: productForm.unitType === 'unidades' ? '1 Unidad' : 'Bidón x 5 Lts', price: bp }
+                          ]
+                        }));
+                      }}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs"
+                    >
+                      <span>1 Sola Opción</span>
+                    </button>
+                  </div>
+
+                  {/* Listado dinámico de opciones */}
+                  <div className="space-y-2 pt-1.5">
+                    {(productForm.options || []).map((opt, idx) => (
+                      <div 
+                        key={idx} 
+                        className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-xl shadow-2xs"
+                      >
+                        <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-700 text-xs font-black flex items-center justify-center shrink-0">
+                          #{idx + 1}
+                        </span>
+
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            required
+                            value={opt.label}
+                            onChange={(e) => {
+                              const newOpts = [...(productForm.options || [])];
+                              newOpts[idx] = { ...newOpts[idx], label: e.target.value };
+                              setProductForm(prev => ({ ...prev, options: newOpts }));
+                            }}
+                            placeholder={idx === 0 ? "Ej: Bidón de Suavizante (5L)" : idx === 1 ? "Ej: Jabón Líquido (5L)" : "Nombre de la opción / producto"}
+                            className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-blue-600 focus:bg-white transition-all"
+                          />
+                        </div>
+
+                        <div className="w-28 sm:w-32 relative shrink-0">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
+                          <input
+                            type="number"
+                            min={0}
+                            required
+                            value={opt.price ?? 0}
+                            onChange={(e) => {
+                              const newOpts = [...(productForm.options || [])];
+                              newOpts[idx] = { ...newOpts[idx], price: Number(e.target.value) };
+                              setProductForm(prev => ({ ...prev, options: newOpts }));
+                            }}
+                            placeholder="Precio"
+                            className="w-full pl-6 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-blue-600 focus:bg-white transition-all"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newOpts = (productForm.options || []).filter((_, i) => i !== idx);
+                            setProductForm(prev => ({ 
+                              ...prev, 
+                              options: newOpts.length > 0 ? newOpts : [{ label: 'Unidad', price: Number(productForm.basePrice) || 0 }] 
+                            }));
+                          }}
+                          disabled={(productForm.options || []).length <= 1}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer shrink-0"
+                          title="Eliminar esta opción"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Botón Agregar Opción */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentOpts = productForm.options || [];
+                      const defaultPrice = Number(productForm.basePrice) || (currentOpts[0]?.price ?? 0);
+                      setProductForm(prev => ({
+                        ...prev,
+                        options: [
+                          ...currentOpts,
+                          { label: `Opción ${currentOpts.length + 1}`, price: defaultPrice }
+                        ]
+                      }));
+                    }}
+                    className="w-full py-2 bg-white hover:bg-blue-50 border border-dashed border-blue-300 text-blue-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Agregar otra opción / producto a la foto</span>
+                  </button>
+                </div>
+
+                {/* ------------------------------------------------------------- */}
+                {/* 📦 COMBO ITEMS (INCLUYE PACK)                                 */}
+                {/* ------------------------------------------------------------- */}
+                {(productForm.category === 'Combos y Promos' || (productForm.includes && productForm.includes.length > 0)) && (
+                  <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black uppercase text-emerald-950 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-emerald-600" />
+                        <span>Artículos incluidos en el Combo / Pack</span>
+                      </label>
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                        {(productForm.includes?.length || 0)} items
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-800 leading-tight">
+                      Listá acá todo lo que incluye el pack para que el cliente lo vea detallado con tildes verdes.
+                    </p>
+
+                    <div className="space-y-1.5">
+                      {(productForm.includes || []).map((inc, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <input
+                            type="text"
+                            value={inc}
+                            onChange={(e) => {
+                              const newInc = [...(productForm.includes || [])];
+                              newInc[i] = e.target.value;
+                              setProductForm(prev => ({ ...prev, includes: newInc }));
+                            }}
+                            placeholder="Ej: 5 Lts Suavizante para Ropa"
+                            className="flex-1 px-3 py-1.5 bg-white border border-emerald-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-emerald-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newInc = (productForm.includes || []).filter((_, idx) => idx !== i);
+                              setProductForm(prev => ({ ...prev, includes: newInc }));
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductForm(prev => ({
+                          ...prev,
+                          includes: [...(prev.includes || []), '']
+                        }));
+                      }}
+                      className="w-full py-1.5 bg-white hover:bg-emerald-100/50 border border-dashed border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Agregar artículo incluido al pack</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Custom Tag & Color Customizer Section */}
                 <div className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">

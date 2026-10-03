@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ShoppingCart, Star, ShieldCheck, Truck, Package, Droplets, Box, CheckCircle2, Sparkles, Plus, Minus, Ban, MessageCircle } from 'lucide-react';
+import { X, ShoppingCart, Star, ShieldCheck, Truck, Package, Droplets, Box, CheckCircle2, Sparkles, Plus, Minus, Ban, MessageCircle, Check, Layers } from 'lucide-react';
 import { Product, ProductOption } from '../types';
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
@@ -249,52 +249,105 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                     </div>
                   </div>
                 ) : (
-                  /* Standard Product Options */
+                  /* Standard Product Options or Multi-Choice in Photo */
                   <div className="mb-4">
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
-                      {product.options.length > 1 ? siteConfig.modalProducto.tituloOpciones : 'Presentación'}
-                    </h4>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {product.options.map((option) => (
-                        <button
-                          key={option.label}
-                          type="button"
-                          onClick={() => handlePresetSelect(option)}
-                          className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-bold transition-all border-2 text-xs sm:text-sm ${
-                            selectedOption.label === option.label && customAmount === ''
-                              ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
-                              : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
+                    {product.options.length > 1 ? (
+                      /* Multi-choice options / products in photo */
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                            <Layers className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Elegí tu opción / producto en la foto:</span>
+                          </h4>
+                          <span className="text-[11px] font-bold text-slate-400">
+                            {product.options.length} disponibles
+                          </span>
+                        </div>
 
-                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center gap-2">
-                      <label className="text-xs font-bold text-slate-700 whitespace-nowrap">
-                        ¿Otra cantidad?
-                      </label>
-                      <div className="relative flex-1">
-                        <input 
-                          type="number" 
-                          min="1"
-                          value={customAmount}
-                          onChange={handleCustomAmountChange}
-                          placeholder="Ej: 15"
-                          className={`w-full pl-3 pr-8 py-1.5 border-2 rounded-xl text-xs sm:text-sm font-bold text-slate-900 bg-white focus:outline-none ${
-                            customAmount !== '' 
-                              ? isInvalidCustom 
-                                ? 'border-red-400' 
-                                : 'border-blue-600' 
-                              : 'border-slate-200 focus:border-blue-400'
-                          }`}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
-                          {product.unitType === 'litros' ? 'L' : 'U'}
-                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {product.options.map((option) => {
+                            const isSelected = selectedOption.label === option.label;
+                            return (
+                              <button
+                                key={option.label}
+                                type="button"
+                                onClick={() => handlePresetSelect(option)}
+                                className={`p-3 rounded-2xl font-bold transition-all border-2 text-left flex items-center justify-between gap-2 cursor-pointer ${
+                                  isSelected
+                                    ? 'border-blue-600 bg-blue-50/80 text-blue-900 shadow-sm ring-1 ring-blue-600/30'
+                                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                                    isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
+                                  }`}>
+                                    {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                  </div>
+                                  <span className="text-xs sm:text-sm font-black truncate">
+                                    {option.label}
+                                  </span>
+                                </div>
+
+                                <span className={`text-xs font-black shrink-0 px-2 py-0.5 rounded-lg ${
+                                  isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                  ${option.price.toLocaleString('es-AR')}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* Single option presentation with custom bulk input */
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
+                          Presentación
+                        </h4>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {product.options.map((option) => (
+                            <button
+                              key={option.label}
+                              type="button"
+                              onClick={() => handlePresetSelect(option)}
+                              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-bold transition-all border-2 text-xs sm:text-sm ${
+                                selectedOption.label === option.label && customAmount === ''
+                                  ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center gap-2">
+                          <label className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                            ¿Otra cantidad?
+                          </label>
+                          <div className="relative flex-1">
+                            <input 
+                              type="number" 
+                              min="1"
+                              value={customAmount}
+                              onChange={handleCustomAmountChange}
+                              placeholder="Ej: 15"
+                              className={`w-full pl-3 pr-8 py-1.5 border-2 rounded-xl text-xs sm:text-sm font-bold text-slate-900 bg-white focus:outline-none ${
+                                customAmount !== '' 
+                                  ? isInvalidCustom 
+                                    ? 'border-red-400' 
+                                    : 'border-blue-600' 
+                                  : 'border-slate-200 focus:border-blue-400'
+                              }`}
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
+                              {product.unitType === 'litros' ? 'L' : 'U'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -356,7 +409,7 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                         <ShoppingCart className="w-5 h-5" />
                         <span>{isCombo 
                           ? `Añadir Combo ($${currentPrice.toLocaleString('es-AR')})` 
-                          : `Añadir ${selectedOption?.label || ''}`}</span>
+                          : `Añadir "${selectedOption?.label || ''}" ($${currentPrice.toLocaleString('es-AR')})`}</span>
                       </div>
                     )}
                   </button>
