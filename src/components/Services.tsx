@@ -8,10 +8,10 @@ export function Services() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <motion.div 
-          initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
-          whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8 }}
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="text-center max-w-3xl mx-auto mb-16"
         >
           <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 drop-shadow-sm">{siteConfig.servicios.titulo}</h2>
@@ -24,11 +24,11 @@ export function Services() {
           {siteConfig.servicios.lista.map((service, index) => (
             <motion.div
               key={index}
-              initial={{ opacity: 0, y: 40, filter: 'blur(10px)', rotateX: 10 }}
-              whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)', rotateX: 0 }}
-              whileHover={{ scale: 1.05, y: -10, rotateX: 5, rotateY: -5 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ type: "spring", stiffness: 300, damping: 20, delay: index * 0.1 }}
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              whileHover={{ scale: 1.04, y: -6 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.55, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
               className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 hover:shadow-2xl hover:shadow-blue-900/10 hover:border-blue-300 transition-all duration-300 border border-slate-200 group transform-style-3d relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

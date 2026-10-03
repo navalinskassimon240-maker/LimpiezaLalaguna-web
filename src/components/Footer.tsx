@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { Droplets, Mail, MapPin, Phone, Clock } from 'lucide-react';
 import { siteConfig } from '../data/config';
 import { StoreStatusBadge } from './StoreStatusBadge';
@@ -7,7 +8,13 @@ export function Footer() {
   return (
     <footer id="contacto" className="bg-slate-900 text-slate-300 pt-16 pb-8 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10 mb-12">
+        <motion.div 
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10 mb-12"
+        >
           
           {/* Brand */}
           <div className="space-y-4 pr-2">
@@ -111,23 +118,31 @@ export function Footer() {
             <StoreStatusBadge compact className="w-full justify-center" />
           </div>
 
-        </div>
+        </motion.div>
 
-        <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
-          <p>© {new Date().getFullYear()} {siteConfig.footer.derechosReservados}</p>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm"
+        >
+          <p>
+            © {new Date().getFullYear()} {siteConfig.footer.derechosReservados}
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('open-admin-panel'))}
+              className="text-slate-700 hover:text-slate-500 transition-colors ml-0.5 cursor-default select-none focus:outline-none"
+              aria-hidden="true"
+              tabIndex={-1}
+            >
+              .
+            </button>
+          </p>
           <div className="flex items-center gap-4">
             <a href="#" className="hover:text-white transition-colors">{siteConfig.footer.enlacePolitica}</a>
             <a href="#" className="hover:text-white transition-colors">{siteConfig.footer.enlaceAvisoLegal}</a>
-            <a 
-              href="#admin" 
-              className="text-slate-500 hover:text-slate-300 transition-colors text-xs flex items-center gap-1 opacity-60 hover:opacity-100"
-              title="Acceso de Administración"
-            >
-              <span>Acceso</span>
-              <span>🔒</span>
-            </a>
           </div>
-        </div>
+        </motion.div>
       </div>
     </footer>
   );

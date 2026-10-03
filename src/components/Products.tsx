@@ -3,16 +3,47 @@ import { ShoppingBag, ShoppingCart, Eye, Search, Sparkles, CheckCircle2, Ban, La
 import { motion, AnimatePresence } from 'motion/react';
 import { useCart } from '../context/CartContext';
 import { ProductModal } from './ProductModal';
+import { ProductCardTilt } from './ProductCardTilt';
+import { triggerFlyToCart } from './FlyToCart';
 import { Product } from '../types';
 import { siteConfig } from '../data/config';
 import { products as initialProducts } from '../data/products';
 import { subscribeProducts } from '../services/storeService';
 
 export function Products() {
+  const { addToCart } = useCart();
   const [productList, setProductList] = useState<Product[]>(initialProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  const handleQuickBuy = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    if (product.outOfStock) {
+      setSelectedProduct(product);
+      return;
+    }
+
+    const isCombo = Boolean(product.category === 'Combos y Promos' || (product.includes && product.includes.length > 0));
+
+    // If product has multiple options (e.g. aromas or packaging), open modal for selection
+    if (!isCombo && product.options && product.options.length > 1) {
+      setSelectedProduct(product);
+      return;
+    }
+
+    // Trigger Fly to Cart animation!
+    triggerFlyToCart(e, product.imageUrl, product.name);
+
+    if (isCombo) {
+      addToCart(product, {
+        label: product.options[0]?.label || `Combo Completo (${product.includes?.join(' + ') || 'Pack'})`,
+        price: product.basePrice
+      }, 1);
+    } else {
+      addToCart(product, product.options[0] || { label: 'Unidad', price: product.basePrice }, 1);
+    }
+  };
 
   useEffect(() => {
     const unsub = subscribeProducts((liveProducts) => {
@@ -83,10 +114,10 @@ export function Products() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 perspective-1000">
         
         <motion.div 
-          initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
-          whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8 }}
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="text-center max-w-3xl mx-auto mb-10"
         >
           <div className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-4 shadow-inner">
@@ -140,23 +171,16 @@ export function Products() {
                 const isCombo = Boolean(product.category === 'Combos y Promos' || (product.includes && product.includes.length > 0));
 
                 return (
-                  <motion.div
+                  <ProductCardTilt
                     key={product.id}
-                    layout
+                    isCombo={isCombo}
                     onClick={() => setSelectedProduct(product)}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    whileHover={{ y: -10, scale: 1.02 }}
-                    transition={{ duration: 0.3 }}
-                    className={`bg-white/90 backdrop-blur-xl rounded-3xl border p-5 shadow-xl transition-all flex flex-col h-full transform-style-3d group relative cursor-pointer ${
+                    className={`bg-white/95 backdrop-blur-xl rounded-3xl border p-5 shadow-lg transition-all flex flex-col h-full group ${
                       isCombo 
-                        ? 'border-emerald-300/80 shadow-emerald-900/10 hover:border-emerald-500 hover:shadow-emerald-900/20' 
-                        : 'border-slate-200 shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-900/20 hover:border-blue-300'
+                        ? 'border-emerald-300/80 shadow-emerald-900/10 hover:border-emerald-500 hover:shadow-emerald-900/25' 
+                        : 'border-slate-200 shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-900/15 hover:border-blue-300'
                     }`}
                   >
-                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-emerald-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                    
                     <div className="aspect-video bg-slate-100 rounded-2xl mb-4 overflow-hidden relative shadow-inner">
                       <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-transparent z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       <img 
@@ -204,10 +228,9 @@ export function Products() {
 
                       {/* Floating View & Add Buttons on Image Hover */}
                       <div className="absolute inset-0 z-20 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <motion.button 
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className={`px-4 py-2.5 rounded-full shadow-xl text-white transition-colors flex items-center gap-2 font-bold text-sm ${
+                        <button 
+                          type="button"
+                          className={`px-4 py-2.5 rounded-full shadow-xl text-white transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 font-bold text-sm cursor-pointer ${
                             product.outOfStock
                               ? 'bg-slate-800 hover:bg-slate-900'
                               : isCombo 
@@ -215,8 +238,8 @@ export function Products() {
                               : 'bg-blue-600 hover:bg-blue-700'
                           }`}
                         >
-                          <Eye className="w-4 h-4" /> {product.outOfStock ? 'Ver Detalle' : isCombo ? 'Ver Combo' : 'Ver Producto'}
-                        </motion.button>
+                          <Eye className="w-4 h-4" /> {product.outOfStock ? 'Ver Detalle' : isCombo ? 'Ver Combo' : 'Ver Opciones'}
+                        </button>
                       </div>
                     </div>
                     
@@ -272,11 +295,8 @@ export function Products() {
                       <motion.button 
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedProduct(product);
-                        }}
-                        className={`mt-auto flex items-center justify-center gap-2 w-full py-2.5 font-semibold text-sm rounded-xl transition-colors shadow-md ${
+                        onClick={(e) => handleQuickBuy(e, product)}
+                        className={`mt-auto flex items-center justify-center gap-2 w-full py-2.5 font-semibold text-sm rounded-xl transition-colors shadow-md cursor-pointer ${
                           product.outOfStock
                             ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                             : isCombo
@@ -297,13 +317,13 @@ export function Products() {
                                 ? 'Comprar Combo Completo' 
                                 : product.options && product.options.length > 1 
                                 ? 'Elegir Opción y Comprar' 
-                                : 'Comprar Producto'}
+                                : 'Agregar al Carrito'}
                             </span>
                           </>
                         )}
                       </motion.button>
                     </div>
-                  </motion.div>
+                  </ProductCardTilt>
                 );
               })}
             </AnimatePresence>

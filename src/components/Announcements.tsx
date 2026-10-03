@@ -82,7 +82,13 @@ export function Announcements() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Encabezado Principal Centrado y Prolijo */}
-        <div className="text-center max-w-2xl mx-auto mb-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center max-w-2xl mx-auto mb-8"
+        >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100/80 text-blue-700 text-xs sm:text-sm font-bold uppercase tracking-wider mb-3 shadow-sm">
             <Sparkles className="w-4 h-4 text-blue-600" />
             <span>{siteConfig.novedades.etiquetaSuperior}</span>
@@ -93,10 +99,16 @@ export function Announcements() {
           <p className="mt-2 text-slate-600 text-sm sm:text-base">
             {siteConfig.novedades.subtituloSeccion}
           </p>
-        </div>
+        </motion.div>
 
         {/* Gran Showcase Slider Centrado */}
-        <div className="relative mx-auto max-w-4xl">
+        <motion.div 
+          initial={{ opacity: 0, y: 32 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="relative mx-auto max-w-4xl"
+        >
           
           {/* Card Principal con Alto Cómodo */}
           <div 
@@ -206,7 +218,13 @@ export function Announcements() {
           </div>
 
           {/* Fila de Miniaturas Centrada y Prolija */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-20px" }}
+            transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4"
+          >
             {novedades.map((item, idx) => (
               <button
                 key={item.id}
@@ -234,9 +252,9 @@ export function Announcements() {
                 </div>
               </button>
             ))}
-          </div>
+          </motion.div>
 
-        </div>
+        </motion.div>
 
       </div>
 

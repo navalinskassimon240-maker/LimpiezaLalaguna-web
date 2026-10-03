@@ -3,11 +3,13 @@ import { Home, ShoppingBag, Flame, ShoppingCart, MessageCircle } from 'lucide-re
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
 import { createWhatsAppUrl } from '../utils/whatsapp';
+import { triggerHaptic } from '../utils/haptics';
 
 export function MobileBottomBar() {
   const { cartCount, setIsCartOpen } = useCart();
 
   const scrollTo = (id: string) => {
+    triggerHaptic('light');
     const el = document.getElementById(id);
     if (el) {
       const offsetTop = el.getBoundingClientRect().top + window.scrollY - 80;
@@ -18,6 +20,7 @@ export function MobileBottomBar() {
   };
 
   const handleOpenWhatsApp = () => {
+    triggerHaptic('medium');
     const url = createWhatsAppUrl(
       siteConfig.whatsapp.numero,
       '¡Hola Limpieza Lalaguna! Estoy viendo la página desde el celular y quisiera hacer una consulta.'
@@ -31,8 +34,11 @@ export function MobileBottomBar() {
         
         {/* 1. Inicio */}
         <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex flex-col items-center justify-center py-1 px-1 text-slate-600 hover:text-blue-600 active:scale-95 transition-all"
+          onClick={() => {
+            triggerHaptic('light');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className="flex flex-col items-center justify-center py-1 px-1 text-slate-600 hover:text-blue-600 active:scale-90 transition-all"
         >
           <Home className="w-5 h-5" />
           <span className="text-[10px] font-bold mt-0.5">Inicio</span>
@@ -41,7 +47,7 @@ export function MobileBottomBar() {
         {/* 2. Catálogo */}
         <button
           onClick={() => scrollTo('productos')}
-          className="flex flex-col items-center justify-center py-1 px-1 text-slate-600 hover:text-blue-600 active:scale-95 transition-all"
+          className="flex flex-col items-center justify-center py-1 px-1 text-slate-600 hover:text-blue-600 active:scale-90 transition-all"
         >
           <ShoppingBag className="w-5 h-5" />
           <span className="text-[10px] font-bold mt-0.5">Catálogo</span>
@@ -50,21 +56,25 @@ export function MobileBottomBar() {
         {/* 3. Novedades / Ofertas */}
         <button
           onClick={() => scrollTo('novedades')}
-          className="flex flex-col items-center justify-center py-1 px-1 text-slate-600 hover:text-emerald-600 active:scale-95 transition-all"
+          className="flex flex-col items-center justify-center py-1 px-1 text-slate-600 hover:text-emerald-600 active:scale-90 transition-all"
         >
-          <Flame className="w-5 h-5 text-emerald-600" />
+          <Flame className="w-5 h-5 text-emerald-600 animate-pulse" />
           <span className="text-[10px] font-bold mt-0.5">Ofertas</span>
         </button>
 
         {/* 4. Carrito con Badge */}
         <button
-          onClick={() => setIsCartOpen(true)}
-          className="flex flex-col items-center justify-center py-1 px-1 text-slate-700 hover:text-blue-600 active:scale-95 transition-all relative"
+          id="mobile-cart-btn"
+          onClick={() => {
+            triggerHaptic('medium');
+            setIsCartOpen(true);
+          }}
+          className="mobile-cart-btn flex flex-col items-center justify-center py-1 px-1 text-slate-700 hover:text-blue-600 active:scale-90 transition-all relative"
         >
           <div className="relative">
             <ShoppingCart className="w-5 h-5 text-blue-600" />
             {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 bg-gradient-to-r from-blue-600 to-emerald-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white shadow-xs">
+              <span className="absolute -top-1.5 -right-2 bg-gradient-to-r from-blue-600 to-emerald-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white shadow-xs animate-bounce">
                 {cartCount}
               </span>
             )}
@@ -75,7 +85,7 @@ export function MobileBottomBar() {
         {/* 5. WhatsApp */}
         <button
           onClick={handleOpenWhatsApp}
-          className="flex flex-col items-center justify-center py-1 px-1 text-emerald-600 hover:text-emerald-700 active:scale-95 transition-all"
+          className="flex flex-col items-center justify-center py-1 px-1 text-emerald-600 hover:text-emerald-700 active:scale-90 transition-all"
         >
           <MessageCircle className="w-5 h-5 fill-emerald-500 text-emerald-600" />
           <span className="text-[10px] font-bold mt-0.5">WhatsApp</span>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ShoppingCart, Droplets } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
@@ -17,6 +17,27 @@ export function Header() {
   
   // Force re-render to apply the framer-motion styles
   const [scrolled, setScrolled] = useState(false);
+
+  // Secret 5-tap gesture on logo
+  const logoClickCountRef = useRef(0);
+  const logoClickTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleLogoClick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    logoClickCountRef.current += 1;
+    if (logoClickTimerRef.current) clearTimeout(logoClickTimerRef.current);
+
+    if (logoClickCountRef.current >= 5) {
+      logoClickCountRef.current = 0;
+      window.dispatchEvent(new CustomEvent('open-admin-panel'));
+      return;
+    }
+
+    logoClickTimerRef.current = setTimeout(() => {
+      logoClickCountRef.current = 0;
+    }, 2500);
+  };
   
   useEffect(() => {
     const unsubscribe = scrollY.on("change", (v) => setScrolled(v > 50));
@@ -31,13 +52,13 @@ export function Header() {
           <div className="flex items-center gap-2.5 sm:gap-4 shrink-1 min-w-0">
             <div className="flex items-center gap-2 sm:gap-3 text-left shrink-1 min-w-0">
               <div 
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                onClick={handleLogoClick}
                 className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 bg-gradient-to-br from-blue-600 via-teal-500 to-emerald-500 rounded-2xl flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-md shadow-emerald-500/20 hover:scale-105 transition-transform cursor-pointer border border-white/40 overflow-hidden"
                 role="button"
                 tabIndex={0}
                 aria-label="Ir al inicio"
               >
-                {siteConfig.marca.logoUrl ? (
+                {siteConfig.marca.logoUrl && siteConfig.marca.logoUrl.trim() !== '' ? (
                   <img 
                     src={siteConfig.marca.logoUrl} 
                     alt={siteConfig.marca.nombrePrincipal}
@@ -99,9 +120,10 @@ export function Header() {
             <div className="h-6 w-[1px] bg-slate-300 mx-1 lg:mx-2"></div>
             
             <button 
+              id="header-cart-btn"
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="relative p-1.5 lg:p-2 text-slate-700 hover:text-blue-600 transition-colors group active:scale-95"
+              className="header-cart-btn relative p-1.5 lg:p-2 text-slate-700 hover:text-blue-600 transition-colors group active:scale-95"
               aria-label="Abrir carrito de compras"
             >
               <ShoppingCart className="w-6 h-6" />
@@ -123,6 +145,7 @@ export function Header() {
           {/* Mobile Menu Button & Cart */}
           <div className="md:hidden flex items-center gap-2 shrink-0">
             <button 
+              id="mobile-header-cart-btn"
               type="button"
               onClick={() => setIsCartOpen(true)}
               className="relative p-2.5 text-slate-700 hover:text-blue-600 active:scale-90 transition-all bg-slate-100/80 rounded-full shadow-sm"

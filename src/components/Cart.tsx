@@ -20,6 +20,7 @@ import {
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
 import { createWhatsAppUrl } from '../utils/whatsapp';
+import { triggerHaptic } from '../utils/haptics';
 
 type CheckoutStep = 'cart' | 'checkout';
 
@@ -183,6 +184,15 @@ export function Cart() {
             transition={{ type: 'spring', damping: 26, stiffness: 260 }}
             className="relative h-full w-full max-w-md bg-white shadow-2xl z-10 flex flex-col border-l border-slate-100"
           >
+            {/* Mobile Drag Handle Bar */}
+            <div 
+              onClick={handleClose}
+              className="md:hidden flex justify-center py-2.5 bg-white cursor-pointer active:opacity-60 transition-opacity shrink-0"
+              title="Tocar para cerrar"
+            >
+              <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
+            </div>
+
             {/* Header */}
             <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-white">
               <div className="flex items-center gap-2.5">
@@ -203,7 +213,7 @@ export function Cart() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-hidden relative">
+            <div className="flex-1 overflow-hidden relative flex flex-col">
               <AnimatePresence mode="wait">
                 {/* STEP 1: CART */}
                 {step === 'cart' && (
@@ -252,8 +262,11 @@ export function Cart() {
                                   </span>
                                 </div>
                                 <button 
-                                  onClick={() => removeFromCart(item.cartItemId)}
-                                  className="text-slate-400 hover:text-red-500 p-1 rounded-lg transition-colors shrink-0"
+                                  onClick={() => {
+                                    triggerHaptic('warning');
+                                    removeFromCart(item.cartItemId);
+                                  }}
+                                  className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg transition-colors shrink-0 active:scale-90"
                                   aria-label="Eliminar producto"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -263,15 +276,21 @@ export function Cart() {
                                 <span className="font-black text-blue-600 text-sm sm:text-base">${(item.price * item.quantity).toLocaleString('es-AR')}</span>
                                 <div className="flex items-center gap-1 bg-white rounded-xl p-0.5 border border-slate-200 shadow-sm">
                                   <button 
-                                    onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                                    className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-blue-600 rounded transition-all"
+                                    onClick={() => {
+                                      triggerHaptic('light');
+                                      updateQuantity(item.cartItemId, item.quantity - 1);
+                                    }}
+                                    className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 rounded transition-all active:scale-90"
                                   >
                                     <Minus className="w-3.5 h-3.5" />
                                   </button>
                                   <span className="text-xs font-bold w-5 text-center text-slate-700">{item.quantity}</span>
                                   <button 
-                                    onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                                    className="w-6 h-6 flex items-center justify-center text-slate-500 hover:text-blue-600 rounded transition-all"
+                                    onClick={() => {
+                                      triggerHaptic('light');
+                                      updateQuantity(item.cartItemId, item.quantity + 1);
+                                    }}
+                                    className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-blue-600 rounded transition-all active:scale-90"
                                   >
                                     <Plus className="w-3.5 h-3.5" />
                                   </button>

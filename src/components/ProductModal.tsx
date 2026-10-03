@@ -6,6 +6,8 @@ import { Product, ProductOption } from '../types';
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
 import { createWhatsAppUrl } from '../utils/whatsapp';
+import { triggerFlyToCart } from './FlyToCart';
+import { triggerHaptic } from '../utils/haptics';
 
 interface ProductModalProps {
   product: Product | null;
@@ -73,14 +75,19 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
   };
 
   const handlePresetSelect = (option: ProductOption) => {
+    triggerHaptic('light');
     setSelectedOption(option);
     setCustomAmount('');
   };
 
   const isInvalidCustom = !isCombo && customAmount !== '' && (isNaN(parseInt(customAmount, 10)) || parseInt(customAmount, 10) <= 0);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (isInvalidCustom) return;
+
+    triggerHaptic('success');
+    // Trigger Fly to Cart animation
+    triggerFlyToCart(e, product.imageUrl, product.name);
     
     if (isCombo) {
       // Add combo with unit price and comboCount as item quantity
@@ -96,8 +103,8 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
     setIsAdded(true);
     setTimeout(() => {
       setIsAdded(false);
-      onClose(); // Auto close modal after a brief moment
-    }, 1500);
+      onClose(); // Auto close modal smoothly so user can keep shopping
+    }, 450);
   };
 
   const currentPrice = isCombo ? product.basePrice * comboCount : selectedOption.price;
@@ -105,7 +112,7 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -117,12 +124,21 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
 
           {/* Modal Content */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.96, y: 25 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ duration: 0.2 }}
-            className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden z-10 border border-slate-200 flex flex-col md:flex-row my-auto max-h-[90vh]"
+            exit={{ opacity: 0, scale: 0.96, y: 25 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="relative w-full max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden z-10 border border-slate-200 flex flex-col md:flex-row max-sm:max-h-[92vh] max-h-[90vh]"
           >
+            {/* Mobile Pull Handle */}
+            <div 
+              onClick={onClose}
+              className="md:hidden flex justify-center py-2.5 bg-white cursor-pointer active:opacity-60 transition-opacity shrink-0"
+              title="Tocar para cerrar"
+            >
+              <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
+            </div>
+
             <button
               onClick={onClose}
               className="absolute top-3 right-3 z-50 p-2 bg-white/90 hover:bg-white text-slate-700 rounded-full shadow-md transition-all active:scale-95"
@@ -363,61 +379,64 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                   </div>
                 </div>
 
-                {product.outOfStock ? (
-                  <div className="space-y-2.5">
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2.5 text-red-800 text-xs">
-                      <Ban className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-bold">Producto Pausado / Sin Stock</p>
-                        <p className="text-red-700/90 text-[11px] mt-0.5 leading-relaxed">
-                          Este artículo no está disponible para agregar al carrito por el momento. Podés consultarnos por WhatsApp cuándo vuelve a ingresar.
-                        </p>
+                {/* Sticky Action Footer on Mobile */}
+                <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] mt-auto z-20 border-t sm:border-t-0 border-slate-100">
+                  {product.outOfStock ? (
+                    <div className="space-y-2.5">
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2.5 text-red-800 text-xs">
+                        <Ban className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold">Producto Pausado / Sin Stock</p>
+                          <p className="text-red-700/90 text-[11px] mt-0.5 leading-relaxed">
+                            Este artículo no está disponible para agregar al carrito por el momento. Podés consultarnos por WhatsApp cuándo vuelve a ingresar.
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    <a
-                      href={createWhatsAppUrl(
-                        siteConfig.whatsapp.numero || '5492241507532',
-                        `Hola Limpieza La Laguna, quería consultar por el producto "${product.name}" que figura sin stock.`
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/30 active:scale-95"
+                      <a
+                        href={createWhatsAppUrl(
+                          siteConfig.whatsapp.numero || '5492241507532',
+                          `Hola Limpieza La Laguna, quería consultar por el producto "${product.name}" que figura sin stock.`
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/30 active:scale-95"
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                        <span>Consultar Disponibilidad por WhatsApp</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleAddToCart}
+                      disabled={isInvalidCustom}
+                      className={`w-full py-3.5 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+                        isAdded 
+                          ? 'bg-emerald-600 text-white shadow-emerald-600/30' 
+                          : isInvalidCustom
+                          ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                          : isCombo
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
+                          : 'bg-slate-900 hover:bg-blue-600 text-white shadow-blue-600/30'
+                      }`}
                     >
-                      <MessageCircle className="w-5 h-5" />
-                      <span>Consultar Disponibilidad por WhatsApp</span>
-                    </a>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleAddToCart}
-                    disabled={isInvalidCustom}
-                    className={`w-full py-3.5 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
-                      isAdded 
-                        ? 'bg-emerald-600 text-white shadow-emerald-600/30' 
-                        : isInvalidCustom
-                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                        : isCombo
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
-                        : 'bg-slate-900 hover:bg-blue-600 text-white shadow-blue-600/30'
-                    }`}
-                  >
-                    {isAdded ? (
-                      <div className="flex items-center gap-2">
-                        <Package className="w-5 h-5 animate-bounce" />
-                        <span>{siteConfig.modalProducto.textoAgregadoExito}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <ShoppingCart className="w-5 h-5" />
-                        <span>{isCombo 
-                          ? `Añadir Combo ($${currentPrice.toLocaleString('es-AR')})` 
-                          : `Añadir "${selectedOption?.label || ''}" ($${currentPrice.toLocaleString('es-AR')})`}</span>
-                      </div>
-                    )}
-                  </button>
-                )}
+                      {isAdded ? (
+                        <div className="flex items-center gap-2">
+                          <Package className="w-5 h-5 animate-bounce" />
+                          <span>{siteConfig.modalProducto.textoAgregadoExito}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <ShoppingCart className="w-5 h-5" />
+                          <span>{isCombo 
+                            ? `Añadir Combo ($${currentPrice.toLocaleString('es-AR')})` 
+                            : `Añadir "${selectedOption?.label || ''}" ($${currentPrice.toLocaleString('es-AR')})`}</span>
+                        </div>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>

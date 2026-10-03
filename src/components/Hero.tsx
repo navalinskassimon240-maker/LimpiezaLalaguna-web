@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowDown, Sparkles } from 'lucide-react';
 import { siteConfig } from '../data/config';
+import { FreshnessBubbles } from './FreshnessBubbles';
 
 export function Hero() {
   const scrollToSection = (id: string) => {
@@ -18,6 +19,9 @@ export function Hero() {
 
   return (
     <section id="inicio" className="relative bg-transparent overflow-hidden">
+      {/* Floating Freshness Soap Bubbles Animation */}
+      <FreshnessBubbles />
+
       {/* Background Pattern */}
       <div className="absolute inset-0 z-0 opacity-10">
         <svg className="absolute w-full h-full" xmlns="http://www.w3.org/2000/svg">
