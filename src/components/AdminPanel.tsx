@@ -30,7 +30,10 @@ import {
   Tag,
   Palette,
   CheckCheck,
-  Clock
+  Clock,
+  Ban,
+  PauseCircle,
+  PlayCircle
 } from 'lucide-react';
 import { Product, ProductOption } from '../types';
 import { products as initialProducts } from '../data/products';
@@ -46,6 +49,7 @@ import {
   restoreAllInitialAnnouncements,
   acknowledgeProductChanges,
   acknowledgeAllProductChanges,
+  toggleProductStock,
   AnnouncementItem 
 } from '../services/storeService';
 import { compressImageFile } from '../utils/imageCompressor';
@@ -95,7 +99,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   const [activeTab, setActiveTab] = useState<'products' | 'changes' | 'announcements' | 'settings'>('products');
 
   // Filter state for Products tab
-  const [productStatusFilter, setProductStatusFilter] = useState<'all' | 'modified' | 'new'>('all');
+  const [productStatusFilter, setProductStatusFilter] = useState<'all' | 'in_stock' | 'out_of_stock' | 'modified' | 'new'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -337,6 +341,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
     return initialProducts.filter((initial) => !products.some((p) => p.id === initial.id));
   }, [products]);
 
+  const inStockCount = useMemo(() => {
+    return products.filter((p) => !p.outOfStock).length;
+  }, [products]);
+
+  const outOfStockCount = useMemo(() => {
+    return products.filter((p) => Boolean(p.outOfStock)).length;
+  }, [products]);
+
+  // 1-Click Toggle Product Stock Status (Pausar / Reactivar)
+  const handleToggleStock = async (product: Product) => {
+    const newStockStatus = !product.outOfStock;
+    setIsProcessing(true);
+    try {
+      await toggleProductStock(product.id, newStockStatus);
+      showToast(
+        newStockStatus 
+          ? `⏸️ "${product.name}" marcado como Sin Stock (Pausado).` 
+          : `🟢 "${product.name}" reactivado con stock disponible.`
+      );
+    } catch (err: any) {
+      alert('Error al cambiar estado de stock: ' + (err?.message || 'Error'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // Handle PIN Login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -440,6 +470,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       unitType: 'litros',
       tag: '',
       tagColor: 'bg-emerald-600 text-white',
+      outOfStock: false,
       options: [{ label: 'Bidón x 5 Lts', price: 0 }]
     });
     setCustomTagHex('');
@@ -453,6 +484,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       ...prod,
       tag: prod.tag || '',
       tagColor: prod.tagColor || 'bg-emerald-600 text-white',
+      outOfStock: Boolean(prod.outOfStock),
       options: prod.options && prod.options.length > 0 ? [...prod.options] : [{ label: 'Unidad', price: prod.basePrice }]
     });
     setCustomTagHex(prod.tagColor && prod.tagColor.startsWith('#') ? prod.tagColor : '');
@@ -483,6 +515,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         unitType: productForm.unitType === 'unidades' ? 'unidades' : 'litros',
         tag: productForm.tag ? productForm.tag.trim() : '',
         tagColor: (customTagHex.trim() || productForm.tagColor?.trim()) || '',
+        outOfStock: Boolean(productForm.outOfStock),
         createdAt: isCreatingProduct ? new Date().toISOString() : productForm.createdAt || new Date().toISOString(),
         options: productForm.options && productForm.options.length > 0 
           ? productForm.options 
@@ -749,12 +782,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
     const diff = productDiffsMap.get(p.id);
     const matchStatus = 
       productStatusFilter === 'all' ? true :
+      productStatusFilter === 'in_stock' ? !p.outOfStock :
+      productStatusFilter === 'out_of_stock' ? Boolean(p.outOfStock) :
       productStatusFilter === 'modified' ? diff?.status === 'modified' :
       productStatusFilter === 'new' ? diff?.status === 'new' : true;
 
     const matchCategory = selectedCategory === 'all' || p.category === selectedCategory;
     const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        (p.category && p.category.toLowerCase().includes(searchTerm.toLowerCase()));
+                        (p.category && p.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                        (p.tag && p.tag.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchStatus && matchCategory && matchSearch;
   });
 
@@ -1000,7 +1036,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                 </button>
 
                 {/* Quick Filter Buttons */}
-                <div className="flex items-center bg-slate-100 p-1 rounded-2xl gap-1">
+                <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-2xl gap-1">
                   <button
                     onClick={() => setProductStatusFilter('all')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -1010,6 +1046,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                     }`}
                   >
                     Todos ({products.length})
+                  </button>
+
+                  <button
+                    onClick={() => setProductStatusFilter('in_stock')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      productStatusFilter === 'in_stock' 
+                        ? 'bg-emerald-600 text-white shadow-xs' 
+                        : 'text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <span>En Stock</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/25">
+                      {inStockCount}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setProductStatusFilter('out_of_stock')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      productStatusFilter === 'out_of_stock' 
+                        ? 'bg-red-600 text-white shadow-xs' 
+                        : 'text-red-700 hover:bg-red-50'
+                    }`}
+                  >
+                    <span>Sin Stock</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/25">
+                      {outOfStockCount}
+                    </span>
                   </button>
 
                   <button
@@ -1030,8 +1094,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                     onClick={() => setProductStatusFilter('new')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                       productStatusFilter === 'new' 
-                        ? 'bg-emerald-600 text-white shadow-xs' 
-                        : 'text-emerald-700 hover:bg-emerald-50'
+                        ? 'bg-blue-600 text-white shadow-xs' 
+                        : 'text-blue-700 hover:bg-blue-50'
                     }`}
                   >
                     <span>Nuevos</span>
@@ -1050,7 +1114,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Buscar producto por nombre o categoría..."
+                    placeholder="Buscar producto por nombre, categoría o etiqueta..."
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all"
                   />
                   {searchTerm && (
@@ -1089,7 +1153,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                   <div 
                     key={prod.id}
                     className={`bg-white rounded-3xl p-4 shadow-sm border transition-all flex flex-col justify-between ${
-                      isModified 
+                      prod.outOfStock
+                        ? 'border-red-200/90 bg-red-50/10'
+                        : isModified 
                         ? 'border-amber-300 ring-1 ring-amber-200/50' 
                         : isNew 
                         ? 'border-emerald-300 ring-1 ring-emerald-200/50' 
@@ -1102,18 +1168,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                         <img 
                           src={prod.imageUrl?.trim() || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800'} 
                           alt={prod.name}
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full object-cover ${
+                            prod.outOfStock ? 'grayscale-[50%] opacity-85' : ''
+                          }`}
                           onError={(e) => {
                             e.currentTarget.onerror = null;
                             e.currentTarget.src = 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800';
                           }}
                         />
 
-                        {/* Custom Marketing Tag (Top-Left) */}
+                        {/* Custom Marketing Tag (Top-Left) with max-width constraint */}
                         {prod.tag && prod.tag.trim() !== '' && (
-                          <div className="absolute top-2.5 left-2.5 z-10">
+                          <div className="absolute top-2.5 left-2.5 z-10 max-w-[55%]">
                             <span 
-                              className={`px-2.5 py-1 text-white text-[10px] font-black uppercase rounded-full shadow-md flex items-center gap-1 ${
+                              title={prod.tag}
+                              className={`px-2.5 py-1 text-white text-[10px] font-black uppercase rounded-full shadow-md flex items-center gap-1 truncate ${
                                 prod.tagColor && prod.tagColor.startsWith('bg-') ? prod.tagColor : 'bg-emerald-600'
                               }`}
                               style={
@@ -1122,14 +1191,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                                   : undefined
                               }
                             >
-                              <Tag className="w-3 h-3" />
-                              <span>{prod.tag}</span>
+                              <Tag className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{prod.tag}</span>
                             </span>
                           </div>
                         )}
 
                         {/* System Status Indicator (Top-Right) */}
                         <div className="absolute top-2.5 right-2.5 z-10 flex flex-col items-end gap-1">
+                          {prod.outOfStock && (
+                            <span className="px-2.5 py-0.5 bg-red-600/95 backdrop-blur-xs text-white text-[10px] font-black uppercase rounded-full shadow-md flex items-center gap-1 border border-white/20">
+                              <Ban className="w-3 h-3" />
+                              <span>Sin Stock</span>
+                            </span>
+                          )}
                           {isModified && (
                             <span className="px-2.5 py-0.5 bg-amber-500/95 backdrop-blur-xs text-white text-[10px] font-black uppercase rounded-full shadow-md flex items-center gap-1 border border-white/20">
                               <AlertCircle className="w-3 h-3" />
@@ -1156,7 +1231,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                         {/* Small Quick Camera Icon for Mobile */}
                         <button
                           onClick={() => triggerDirectPhotoUpload(prod.id)}
-                          className="sm:hidden absolute top-2 right-2 p-2 bg-white/90 text-slate-800 rounded-full shadow-md active:scale-95"
+                          className="sm:hidden absolute bottom-2 right-2 p-2 bg-white/90 text-slate-800 rounded-full shadow-md active:scale-95"
                           title="Cambiar Foto"
                         >
                           <Camera className="w-4 h-4" />
@@ -1206,6 +1281,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                         </div>
 
                         <div className="flex items-center gap-1.5">
+                          {/* 1-Click Stock Pause / Resume Button */}
+                          <button
+                            onClick={() => handleToggleStock(prod)}
+                            className={`p-2 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer ${
+                              prod.outOfStock
+                                ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+                                : 'bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800'
+                            }`}
+                            title={prod.outOfStock ? 'Reactivar disponibilidad de stock' : 'Pausar producto (marcar sin stock con 1 clic)'}
+                          >
+                            {prod.outOfStock ? (
+                              <>
+                                <PlayCircle className="w-4 h-4 text-emerald-600" />
+                                <span className="hidden sm:inline">Reactivar</span>
+                              </>
+                            ) : (
+                              <>
+                                <PauseCircle className="w-4 h-4 text-amber-600" />
+                                <span className="hidden sm:inline">Pausar</span>
+                              </>
+                            )}
+                          </button>
+
                           <button
                             onClick={() => startEditProduct(prod)}
                             className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
@@ -1808,7 +1906,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                     </label>
                     {productForm.tag && (
                       <span 
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase shadow-xs text-white ${
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase shadow-xs text-white max-w-[150px] truncate ${
                           customTagHex ? '' : (productForm.tagColor || 'bg-emerald-600')
                         }`}
                         style={customTagHex ? { backgroundColor: customTagHex } : undefined}
@@ -1822,13 +1920,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                     <div>
                       <input
                         type="text"
+                        maxLength={25}
                         value={productForm.tag || ''}
                         onChange={(e) => setProductForm((prev) => ({ ...prev, tag: e.target.value }))}
                         placeholder="Ej: ¡Más Vendido!, Oferta, 2x1..."
                         className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold outline-none focus:border-blue-600"
                       />
                       <p className="text-[10px] text-slate-400 mt-1">
-                        Dejá vacío si no querés ninguna etiqueta.
+                        Máx. 25 letras para mantener las tarjetas ordenadas y prolijas.
                       </p>
                     </div>
 
@@ -1859,6 +1958,45 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                         ))}
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Stock Availability Selector */}
+                <div className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <label className="block text-xs font-black uppercase text-slate-800 flex items-center gap-1.5">
+                    <PauseCircle className="w-4 h-4 text-blue-600" />
+                    <span>Disponibilidad / Estado de Stock</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 leading-tight">
+                    Si marcás "Sin Stock", el producto seguirá visible en la web para los clientes pero no podrán agregarlo al carrito.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setProductForm((prev) => ({ ...prev, outOfStock: false }))}
+                      className={`py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                        !productForm.outOfStock
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>🟢 En Stock (Disponible)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setProductForm((prev) => ({ ...prev, outOfStock: true }))}
+                      className={`py-2.5 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                        productForm.outOfStock
+                          ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Ban className="w-4 h-4" />
+                      <span>⏸️ Pausado / Sin Stock</span>
+                    </button>
                   </div>
                 </div>
 

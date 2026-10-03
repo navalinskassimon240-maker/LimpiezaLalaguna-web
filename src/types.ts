@@ -15,6 +15,8 @@ export interface Product {
   includes?: string[];
   tag?: string;
   tagColor?: string;
+  outOfStock?: boolean;
+  isOutOfStock?: boolean;
   createdAt?: string;
   acknowledgedAt?: string;
 }

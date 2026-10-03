@@ -20,6 +20,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const addToCart = (product: Product, option: ProductOption, quantityToAdd: number = 1) => {
+    if (product.outOfStock) return;
     const cartItemId = `${product.id}-${option.label}`;
     setCartItems(prev => {
       const existing = prev.find(item => item.cartItemId === cartItemId);

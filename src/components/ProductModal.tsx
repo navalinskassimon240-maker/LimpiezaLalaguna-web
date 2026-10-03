@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ShoppingCart, Star, ShieldCheck, Truck, Package, Droplets, Box, CheckCircle2, Sparkles, Plus, Minus } from 'lucide-react';
+import { X, ShoppingCart, Star, ShieldCheck, Truck, Package, Droplets, Box, CheckCircle2, Sparkles, Plus, Minus, Ban, MessageCircle } from 'lucide-react';
 import { Product, ProductOption } from '../types';
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
@@ -142,10 +142,11 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                 className="w-full h-full object-cover"
               />
               
-              <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2">
+              <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2 max-w-[90%]">
                 {product.tag && product.tag.trim() !== '' && (
                   <div 
-                    className={`px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 font-bold text-xs text-white ${
+                    title={product.tag}
+                    className={`px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 font-bold text-xs text-white max-w-[160px] truncate ${
                       product.tagColor && product.tagColor.startsWith('bg-') ? product.tagColor : 'bg-emerald-600'
                     }`}
                     style={
@@ -154,18 +155,25 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                         : undefined
                     }
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{product.tag}</span>
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{product.tag}</span>
                   </div>
                 )}
-                <div className={`px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 font-bold text-xs ${
-                  isCombo 
-                    ? 'bg-emerald-600 text-white' 
-                    : 'bg-white/95 text-blue-700'
-                }`}>
-                  {isCombo ? <Sparkles className="w-3.5 h-3.5" /> : product.unitType === 'litros' ? <Droplets className="w-3.5 h-3.5" /> : <Box className="w-3.5 h-3.5" />}
-                  {isCombo ? 'Pack Todo Incluido' : 'Presentación'}
-                </div>
+                {product.outOfStock ? (
+                  <div className="px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 font-bold text-xs bg-red-600 text-white">
+                    <Ban className="w-3.5 h-3.5" />
+                    <span>Sin Stock</span>
+                  </div>
+                ) : (
+                  <div className={`px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 font-bold text-xs ${
+                    isCombo 
+                      ? 'bg-emerald-600 text-white' 
+                      : 'bg-white/95 text-blue-700'
+                  }`}>
+                    {isCombo ? <Sparkles className="w-3.5 h-3.5" /> : product.unitType === 'litros' ? <Droplets className="w-3.5 h-3.5" /> : <Box className="w-3.5 h-3.5" />}
+                    <span>{isCombo ? 'Pack Todo Incluido' : 'Presentación'}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -301,34 +309,58 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleAddToCart}
-                  disabled={isInvalidCustom}
-                  className={`w-full py-3.5 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
-                    isAdded 
-                      ? 'bg-emerald-600 text-white shadow-emerald-600/30' 
-                      : isInvalidCustom
-                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                      : isCombo
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
-                      : 'bg-slate-900 hover:bg-blue-600 text-white shadow-blue-600/30'
-                  }`}
-                >
-                  {isAdded ? (
-                    <div className="flex items-center gap-2">
-                      <Package className="w-5 h-5 animate-bounce" />
-                      <span>{siteConfig.modalProducto.textoAgregadoExito}</span>
+                {product.outOfStock ? (
+                  <div className="space-y-2.5">
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-2.5 text-red-800 text-xs">
+                      <Ban className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Producto Pausado / Sin Stock</p>
+                        <p className="text-red-700/90 text-[11px] mt-0.5 leading-relaxed">
+                          Este artículo no está disponible para agregar al carrito por el momento. Podés consultarnos por WhatsApp cuándo vuelve a ingresar.
+                        </p>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <ShoppingCart className="w-5 h-5" />
-                      <span>{isCombo 
-                        ? `Añadir Combo ($${currentPrice.toLocaleString('es-AR')})` 
-                        : `Añadir ${selectedOption.label}`}</span>
-                    </div>
-                  )}
-                </button>
+
+                    <a
+                      href={`https://wa.me/5491122507817?text=Hola%20Limpieza%20La%20Laguna,%20quer%C3%ADa%20consultar%20por%20el%20producto%20"${encodeURIComponent(product.name)}"%20que%20figura%20sin%20stock.`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/30 active:scale-95"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      <span>Consultar Disponibilidad por WhatsApp</span>
+                    </a>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    disabled={isInvalidCustom}
+                    className={`w-full py-3.5 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+                      isAdded 
+                        ? 'bg-emerald-600 text-white shadow-emerald-600/30' 
+                        : isInvalidCustom
+                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                        : isCombo
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
+                        : 'bg-slate-900 hover:bg-blue-600 text-white shadow-blue-600/30'
+                    }`}
+                  >
+                    {isAdded ? (
+                      <div className="flex items-center gap-2">
+                        <Package className="w-5 h-5 animate-bounce" />
+                        <span>{siteConfig.modalProducto.textoAgregadoExito}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <ShoppingCart className="w-5 h-5" />
+                        <span>{isCombo 
+                          ? `Añadir Combo ($${currentPrice.toLocaleString('es-AR')})` 
+                          : `Añadir ${selectedOption?.label || ''}`}</span>
+                      </div>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>

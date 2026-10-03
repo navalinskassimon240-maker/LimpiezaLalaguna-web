@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ShoppingBag, ShoppingCart, Eye, Search, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, ShoppingCart, Eye, Search, Sparkles, CheckCircle2, Ban } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCart } from '../context/CartContext';
 import { ProductModal } from './ProductModal';
@@ -129,13 +129,16 @@ export function Products() {
                           e.currentTarget.onerror = null;
                           e.currentTarget.src = 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800';
                         }}
-                        className="w-full h-full object-cover transform group-hover:scale-110 transition-all duration-500 ease-out"
+                        className={`w-full h-full object-cover transform group-hover:scale-110 transition-all duration-500 ease-out ${
+                          product.outOfStock ? 'grayscale-[50%] opacity-85' : ''
+                        }`}
                       />
                       
                       {/* Custom Product Tag (or Combo Badge) */}
                       {product.tag && product.tag.trim() !== '' ? (
                         <div 
-                          className={`absolute top-2.5 left-2.5 z-20 text-white text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 ${
+                          title={product.tag}
+                          className={`absolute top-2.5 left-2.5 z-20 text-white text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 max-w-[65%] truncate ${
                             product.tagColor && product.tagColor.startsWith('bg-') ? product.tagColor : 'bg-emerald-600'
                           }`}
                           style={
@@ -144,15 +147,23 @@ export function Products() {
                               : undefined
                           }
                         >
-                          <Sparkles className="w-3 h-3 text-white/80" />
-                          <span>{product.tag}</span>
+                          <Sparkles className="w-3 h-3 text-white/80 shrink-0" />
+                          <span className="truncate">{product.tag}</span>
                         </div>
                       ) : isCombo ? (
                         <div className="absolute top-2.5 left-2.5 z-20 bg-emerald-600 text-white text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-emerald-200" />
+                          <Sparkles className="w-3 h-3 text-emerald-200 shrink-0" />
                           <span>Pack Completo</span>
                         </div>
                       ) : null}
+
+                      {/* Out of stock badge */}
+                      {product.outOfStock && (
+                        <div className="absolute top-2.5 right-2.5 z-20 bg-red-600/95 backdrop-blur-xs text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white/20">
+                          <Ban className="w-3 h-3" />
+                          <span>Sin Stock</span>
+                        </div>
+                      )}
 
                       {/* Floating View & Add Buttons on Image Hover */}
                       <div className="absolute inset-0 z-20 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -160,10 +171,14 @@ export function Products() {
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           className={`px-4 py-2.5 rounded-full shadow-xl text-white transition-colors flex items-center gap-2 font-bold text-sm ${
-                            isCombo ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'
+                            product.outOfStock
+                              ? 'bg-slate-800 hover:bg-slate-900'
+                              : isCombo 
+                              ? 'bg-emerald-600 hover:bg-emerald-700' 
+                              : 'bg-blue-600 hover:bg-blue-700'
                           }`}
                         >
-                          <Eye className="w-4 h-4" /> {isCombo ? 'Ver Combo' : 'Ver Producto'}
+                          <Eye className="w-4 h-4" /> {product.outOfStock ? 'Ver Detalle' : isCombo ? 'Ver Combo' : 'Ver Producto'}
                         </motion.button>
                       </div>
                     </div>
@@ -211,14 +226,25 @@ export function Products() {
                           e.stopPropagation();
                           setSelectedProduct(product);
                         }}
-                        className={`mt-auto flex items-center justify-center gap-2 w-full py-2.5 text-white font-semibold text-sm rounded-xl transition-colors shadow-md ${
-                          isCombo
-                            ? 'bg-emerald-600 hover:bg-emerald-700 hover:shadow-emerald-600/30'
-                            : 'bg-slate-900 hover:bg-blue-600 hover:shadow-blue-500/40'
+                        className={`mt-auto flex items-center justify-center gap-2 w-full py-2.5 font-semibold text-sm rounded-xl transition-colors shadow-md ${
+                          product.outOfStock
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                            : isCombo
+                            ? 'bg-emerald-600 hover:bg-emerald-700 hover:shadow-emerald-600/30 text-white'
+                            : 'bg-slate-900 hover:bg-blue-600 hover:shadow-blue-500/40 text-white'
                         }`}
                       >
-                        <ShoppingCart className="w-4 h-4" />
-                        {isCombo ? 'Comprar Combo Completo' : 'Comprar Producto'}
+                        {product.outOfStock ? (
+                          <>
+                            <Ban className="w-4 h-4 text-red-500" />
+                            <span>Agotado / Sin Stock</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="w-4 h-4" />
+                            <span>{isCombo ? 'Comprar Combo Completo' : 'Comprar Producto'}</span>
+                          </>
+                        )}
                       </motion.button>
                     </div>
                   </motion.div>

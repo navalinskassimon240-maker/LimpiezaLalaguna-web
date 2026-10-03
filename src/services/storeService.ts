@@ -134,6 +134,7 @@ export function subscribeProducts(
           includes: data.includes || [],
           tag: data.tag ? String(data.tag).trim() : undefined,
           tagColor: data.tagColor ? String(data.tagColor).trim() : undefined,
+          outOfStock: Boolean(data.outOfStock || data.isOutOfStock),
           createdAt: data.createdAt ? String(data.createdAt) : undefined,
           acknowledgedAt: data.acknowledgedAt ? String(data.acknowledgedAt) : undefined
         });
@@ -185,6 +186,7 @@ export async function saveProduct(product: Product): Promise<void> {
     includes: Array.isArray(product.includes) ? product.includes : [],
     tag: product.tag ? product.tag.trim() : '',
     tagColor: product.tagColor ? product.tagColor.trim() : '',
+    outOfStock: Boolean(product.outOfStock || product.isOutOfStock),
     createdAt: product.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -194,6 +196,17 @@ export async function saveProduct(product: Product): Promise<void> {
   }
 
   await setDoc(productDoc, sanitizeFirestoreObject(dataToSave), { merge: true });
+}
+
+/**
+ * Quick toggle for product in-stock vs out-of-stock status.
+ */
+export async function toggleProductStock(productId: string, outOfStock: boolean): Promise<void> {
+  const productDoc = doc(db, PRODUCTS_COLLECTION, productId);
+  await setDoc(productDoc, {
+    outOfStock: Boolean(outOfStock),
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
 }
 
 /**
@@ -637,4 +650,3 @@ export async function deleteRestorePoint(pointId: string): Promise<void> {
   const localList = getLocalRestorePoints();
   saveLocalRestorePoints(localList.filter(p => p.id !== pointId));
 }
-
