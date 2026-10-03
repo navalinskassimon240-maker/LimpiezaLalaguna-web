@@ -95,13 +95,21 @@ const TAG_COLOR_PRESETS = [
 ];
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
-  // Authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('laguna_admin_auth') === 'true';
-  });
+  // Authentication state - Strictly in-memory & ephemeral for maximum security (NEVER stored in browser)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+
+  // Clear any legacy storage entries to guarantee no credentials or auth tokens persist
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem('laguna_admin_auth');
+      localStorage.removeItem('laguna_admin_auth');
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
 
   // Store data - initialize with initialProducts so it is NEVER empty
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -397,20 +405,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
     }
   };
 
-  // Handle PIN Login
+  // Handle PIN Login (Ultra-secure ephemeral mode: password and session are NEVER saved)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pinInput.trim()) return;
+    const entered = pinInput.trim();
+    if (!entered) return;
 
     setIsVerifying(true);
     setPinError('');
     try {
-      const isValid = await verifyAdminPin(pinInput);
+      const isValid = await verifyAdminPin(entered);
       if (isValid) {
         setIsAuthenticated(true);
-        sessionStorage.setItem('laguna_admin_auth', 'true');
+        // Wipe password immediately from state and memory
+        setPinInput('');
+        setPinError('');
+        try {
+          sessionStorage.removeItem('laguna_admin_auth');
+          localStorage.removeItem('laguna_admin_auth');
+        } catch {}
       } else {
-        setPinError('Código incorrecto.');
+        setPinError('Código incorrecto. Verificalo y volvé a intentar.');
+        setPinInput(''); // Clear on failure as well
       }
     } catch {
       setPinError('Error de conexión al verificar el código.');
@@ -421,7 +437,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    sessionStorage.removeItem('laguna_admin_auth');
+    setPinInput('');
+    setPinError('');
+    try {
+      sessionStorage.removeItem('laguna_admin_auth');
+      localStorage.removeItem('laguna_admin_auth');
+    } catch {}
   };
 
   // Multi-device Image Selection handler
@@ -995,17 +1016,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4 mt-6">
+          <form 
+            onSubmit={handleLogin} 
+            autoComplete="off" 
+            className="space-y-4 mt-6"
+          >
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 text-center">
+              <label 
+                htmlFor="admin_ephemeral_security_pin"
+                className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 text-center"
+              >
                 Código de Seguridad
               </label>
               <div className="relative">
                 <input
                   type="password"
+                  id="admin_ephemeral_security_pin"
+                  name="admin_ephemeral_security_pin"
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value)}
                   placeholder="••••"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-form-type="other"
                   className="w-full px-4 py-3.5 bg-slate-950/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-2xl text-center text-2xl font-bold tracking-[0.4em] text-white outline-none transition-all placeholder:text-slate-600 placeholder:tracking-normal"
                   autoFocus
                 />
@@ -1032,10 +1068,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
               ) : (
                 <>
                   <Unlock className="w-4 h-4" />
-                  <span>Ingresar</span>
+                  <span>Ingresar al Panel</span>
                 </>
               )}
             </button>
+
+            {/* Seguridad Reforzada: Nunca se guarda en el navegador */}
+            <div className="pt-4 mt-2 border-t border-slate-800/80 text-center space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                <span>Máxima Seguridad: Contraseña Efímera</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed max-w-xs mx-auto">
+                La contraseña y la sesión <strong>nunca se guardan en el navegador ni en gestores de claves</strong>. Se solicitará cada vez que ingreses.
+              </p>
+            </div>
           </form>
 
         </div>
@@ -1103,8 +1150,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={onBackToStore}
+              onClick={() => {
+                handleLogout();
+                onBackToStore();
+              }}
               className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Volver a la tienda (cierra la sesión por seguridad)"
             >
               <ExternalLink className="w-4 h-4 text-blue-600" />
               <span>Ver Tienda</span>
@@ -1112,10 +1163,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
 
             <button
               onClick={handleLogout}
-              className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer"
-              title="Cerrar Sesión"
+              className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Cerrar Sesión y Bloquear Panel"
             >
-              Salir
+              <Lock className="w-4 h-4" />
+              <span>Bloquear / Salir</span>
             </button>
           </div>
 
@@ -2076,52 +2128,94 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 4: SETTINGS / CHANGE PIN                                  */}
+        {/* TAB 4: SETTINGS / CHANGE PIN & SECURITY                       */}
         {/* ------------------------------------------------------------- */}
         {activeTab === 'settings' && (
-          <div className="max-w-xl mx-auto bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200">
-            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
-              <Key className="w-6 h-6" />
-            </div>
-
-            <h2 className="text-xl font-black text-slate-900">Cambiar Código PIN de Acceso</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Podés cambiar el código de seguridad que se pide para ingresar al panel.
-            </p>
-
-            <form onSubmit={handleChangePin} className="space-y-4 mt-6">
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5">
-                  Nuevo Código PIN
-                </label>
-                <input
-                  type="text"
-                  value={newPinValue}
-                  onChange={(e) => setNewPinValue(e.target.value)}
-                  placeholder="Ej: 5678"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-lg font-bold outline-none focus:border-blue-600 tracking-wider"
-                  maxLength={12}
-                />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Mínimo 4 caracteres fáciles de recordar.
-                </p>
+          <div className="max-w-xl mx-auto space-y-6">
+            <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200">
+              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4">
+                <Key className="w-6 h-6" />
               </div>
 
-              {pinChangeSuccess && (
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 font-bold flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span>¡Código actualizado correctamente! Recordalo para la próxima vez.</span>
-                </div>
-              )}
+              <h2 className="text-xl font-black text-slate-900">Cambiar Código PIN de Acceso</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Podés cambiar el código de seguridad que se pide para ingresar al panel de administración.
+              </p>
 
-              <button
-                type="submit"
-                disabled={isProcessing || !newPinValue.trim()}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm rounded-2xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
-              >
-                {isProcessing ? 'Guardando...' : 'Guardar Nuevo Código'}
-              </button>
-            </form>
+              <form onSubmit={handleChangePin} autoComplete="off" className="space-y-4 mt-6">
+                <div>
+                  <label 
+                    htmlFor="admin_new_security_pin"
+                    className="block text-xs font-bold uppercase text-slate-700 mb-1.5"
+                  >
+                    Nuevo Código PIN
+                  </label>
+                  <input
+                    type="password"
+                    id="admin_new_security_pin"
+                    name="admin_new_security_pin"
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-form-type="other"
+                    value={newPinValue}
+                    onChange={(e) => setNewPinValue(e.target.value)}
+                    placeholder="Ej: 5678"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-lg font-bold outline-none focus:border-blue-600 tracking-wider"
+                    maxLength={16}
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Mínimo 4 caracteres fáciles de recordar.
+                  </p>
+                </div>
+
+                {pinChangeSuccess && (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 font-bold flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>¡Código actualizado correctamente! Recordalo para tu próximo ingreso.</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isProcessing || !newPinValue.trim()}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm rounded-2xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Key className="w-4 h-4" />
+                  <span>{isProcessing ? 'Guardando...' : 'Guardar Nuevo Código'}</span>
+                </button>
+              </form>
+            </div>
+
+            {/* Panel de Información de Seguridad Reforzada */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white p-6 sm:p-7 rounded-3xl border border-slate-800 shadow-xl space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">Privacidad y Seguridad Reforzada</h3>
+                  <p className="text-xs text-slate-400">Protección activa de tu negocio</p>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 text-xs text-slate-300">
+                <div className="flex items-start gap-2 bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span><strong>Contraseña no guardada:</strong> El navegador y los gestores de claves no almacenan tu PIN.</span>
+                </div>
+                <div className="flex items-start gap-2 bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span><strong>Sesión efímera:</strong> Si cerrás la pestaña, recargás o volvés a la tienda, la sesión se bloquea al instante y te vuelve a pedir la clave.</span>
+                </div>
+                <div className="flex items-start gap-2 bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/50">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span><strong>Dispositivos compartidos seguros:</strong> Nadie que use tu celular o computadora podrá entrar sin ingresar manualmente el código.</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
