@@ -16,8 +16,13 @@ import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { UpdateNotifier } from './components/UpdateNotifier';
 import { AdminPanel } from './components/AdminPanel';
 import { MobileBottomBar } from './components/MobileBottomBar';
+import { BenefitsTicker } from './components/BenefitsTicker';
+import { FlyToCartContainer } from './components/FlyToCart';
+import { RevealOnScroll } from './components/RevealOnScroll';
+import { AnimationViewerModal } from './components/AnimationViewerModal';
+import { Sparkles } from 'lucide-react';
 
-// Helper to check if current route matches the secret /staff0 path exclusively
+// Helper para verificar ruta secreta /staff0
 const checkIsAdminRoute = () => {
   if (typeof window === 'undefined') return false;
   const hash = window.location.hash.toLowerCase().replace('#/', '#');
@@ -31,19 +36,18 @@ const checkIsAdminRoute = () => {
 
 export default function App() {
   const [isAdminView, setIsAdminView] = useState<boolean>(checkIsAdminRoute);
+  const [isAnimationsModalOpen, setIsAnimationsModalOpen] = useState(false);
 
   useEffect(() => {
     const handleRouteChange = () => {
       setIsAdminView(checkIsAdminRoute());
     };
 
-    // Secret custom event (e.g. from 5 logo clicks or secret footer click)
     const handleOpenAdmin = () => {
       setIsAdminView(true);
       window.location.hash = '#staff0';
     };
 
-    // Secret keyboard shortcut: Ctrl + Shift + L (or Alt + L) for desktop
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey && e.shiftKey && (e.key === 'L' || e.key === 'l')) ||
           (e.altKey && (e.key === 'L' || e.key === 'l'))) {
@@ -86,23 +90,57 @@ export default function App() {
 
   return (
     <CartProvider>
-      <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans selection:bg-blue-200 selection:text-blue-900 scroll-smooth relative overflow-hidden">
-        {/* Lightweight subtle background */}
+      <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans selection:bg-blue-200 selection:text-blue-900 scroll-smooth relative">
+        {/* Fondo sutil degradado */}
         <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-b from-blue-50/40 via-white to-slate-50/50" />
         
-        <div className="relative z-10 flex flex-col min-h-screen pb-16 md:pb-0">
+        <div className="relative z-10 flex flex-col min-h-screen pb-24 md:pb-0">
           <Header />
           <main className="flex-grow">
             <Hero />
-            <Announcements />
+            {/* Cinta continua de beneficios */}
+            <BenefitsTicker />
+            
+            {/* Novedades y promociones con revelado suave */}
+            <RevealOnScroll direction="up" delay={0.1}>
+              <Announcements />
+            </RevealOnScroll>
+            
+            {/* Catálogo con tarjetas 3D */}
             <Products />
-            <Services />
+            
+            {/* Servicios con revelado suave */}
+            <RevealOnScroll direction="up" delay={0.1}>
+              <Services />
+            </RevealOnScroll>
           </main>
+          
           <Footer />
           <Cart />
+          
+          {/* Contenedor de animación de productos volando al carrito */}
+          <FlyToCartContainer />
+          
           <FloatingWhatsApp />
           <MobileBottomBar />
           <UpdateNotifier />
+
+          {/* Botón flotante para ver y probar las animaciones */}
+          <button 
+            type="button"
+            onClick={() => setIsAnimationsModalOpen(true)}
+            className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:bottom-7 left-4 z-40 bg-slate-900/90 hover:bg-slate-800 text-white backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-xl border border-slate-700/80 flex items-center gap-2 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            title="Ver y probar todas las animaciones"
+          >
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <span className="hidden sm:inline">Ver Animaciones & Código</span>
+            <span className="sm:hidden">Animaciones</span>
+          </button>
+
+          <AnimationViewerModal 
+            isOpen={isAnimationsModalOpen} 
+            onClose={() => setIsAnimationsModalOpen(false)} 
+          />
         </div>
       </div>
     </CartProvider>
