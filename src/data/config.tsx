@@ -59,7 +59,7 @@ export const siteConfig = {
   // =======================================================================================
   whatsapp: {
     // Número al que llegan todos los pedidos y consultas (sin espacios ni guiones)
-    numero: "5492241507232", 
+    numero: "5492241507532", 
     
     // Alias de Mercado Pago, CBU o Cuenta Bancaria para transferencias
     aliasTransferencia: "LIMPIEZALALAGUNA.MP",
@@ -72,7 +72,7 @@ export const siteConfig = {
   // =======================================================================================
   contacto: {
     // Teléfono que se muestra visible en el pie de página
-    telefonoMostrar: "+54 9 2241 50-7232",
+    telefonoMostrar: "+54 9 2241 50-7532",
     
     // Correo electrónico de contacto
     email: "info@limpiezalalaguna.com",

@@ -377,7 +377,7 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
 
                     <a
                       href={createWhatsAppUrl(
-                        siteConfig.whatsapp.numero || '5492241507232',
+                        siteConfig.whatsapp.numero || '5492241507532',
                         `Hola Limpieza La Laguna, quería consultar por el producto "${product.name}" que figura sin stock.`
                       )}
                       target="_blank"
