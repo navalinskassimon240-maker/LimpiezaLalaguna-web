@@ -17,42 +17,52 @@ import { UpdateNotifier } from './components/UpdateNotifier';
 import { AdminPanel } from './components/AdminPanel';
 import { MobileBottomBar } from './components/MobileBottomBar';
 
+// Helper to check if current route matches the secret /staff0 path exclusively
+const checkIsAdminRoute = () => {
+  if (typeof window === 'undefined') return false;
+  const hash = window.location.hash.toLowerCase().replace('#/', '#');
+  const pathname = window.location.pathname.toLowerCase().replace(/\/$/, '');
+
+  const isStaff0Hash = hash === '#staff0';
+  const isStaff0Path = pathname === '/staff0';
+
+  return isStaff0Hash || isStaff0Path;
+};
+
 export default function App() {
-  const [isAdminView, setIsAdminView] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const hash = window.location.hash.toLowerCase();
-    const pathname = window.location.pathname.toLowerCase();
-    const search = new URLSearchParams(window.location.search);
-    return (
-      hash === '#admin' ||
-      hash === '#/admin' ||
-      hash === '#admin-laguna' ||
-      pathname === '/admin' ||
-      pathname === '/admin-laguna' ||
-      search.has('admin')
-    );
-  });
+  const [isAdminView, setIsAdminView] = useState<boolean>(checkIsAdminRoute);
 
   useEffect(() => {
     const handleRouteChange = () => {
-      const hash = window.location.hash.toLowerCase();
-      const pathname = window.location.pathname.toLowerCase();
-      const search = new URLSearchParams(window.location.search);
-      setIsAdminView(
-        hash === '#admin' ||
-        hash === '#/admin' ||
-        hash === '#admin-laguna' ||
-        pathname === '/admin' ||
-        pathname === '/admin-laguna' ||
-        search.has('admin')
-      );
+      setIsAdminView(checkIsAdminRoute());
+    };
+
+    // Secret custom event (e.g. from 5 logo clicks or secret footer click)
+    const handleOpenAdmin = () => {
+      setIsAdminView(true);
+      window.location.hash = '#staff0';
+    };
+
+    // Secret keyboard shortcut: Ctrl + Shift + L (or Alt + L) for desktop
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey && e.shiftKey && (e.key === 'L' || e.key === 'l')) ||
+          (e.altKey && (e.key === 'L' || e.key === 'l'))) {
+        e.preventDefault();
+        setIsAdminView(true);
+        window.location.hash = '#staff0';
+      }
     };
 
     window.addEventListener('hashchange', handleRouteChange);
     window.addEventListener('popstate', handleRouteChange);
+    window.addEventListener('open-admin-panel', handleOpenAdmin);
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       window.removeEventListener('hashchange', handleRouteChange);
       window.removeEventListener('popstate', handleRouteChange);
+      window.removeEventListener('open-admin-panel', handleOpenAdmin);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -61,10 +71,11 @@ export default function App() {
     if (window.location.hash) {
       window.location.hash = '';
     }
-    if (window.location.search.includes('admin')) {
+    if (window.location.search) {
       window.history.pushState({}, '', window.location.pathname);
     }
-    if (window.location.pathname === '/admin' || window.location.pathname === '/admin-laguna') {
+    const pathname = window.location.pathname.toLowerCase();
+    if (pathname === '/staff0') {
       window.history.pushState({}, '', '/');
     }
   };
