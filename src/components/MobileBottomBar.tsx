@@ -2,8 +2,24 @@ import React from 'react';
 import { Home, ShoppingBag, Flame, ShoppingCart, MessageCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
-import { createWhatsAppUrl } from '../utils/whatsapp';
-import { triggerHaptic } from '../utils/haptics';
+
+// Vibración táctil integrada (sin depender de ningún archivo externo)
+function triggerHaptic(type: 'light' | 'medium' | 'success' | 'warning' = 'light') {
+  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+    try {
+      if (type === 'medium') navigator.vibrate(18);
+      else navigator.vibrate(10);
+    } catch {
+      // Ignorar si no está soportado
+    }
+  }
+}
+
+function createWhatsAppUrl(phone: string, text?: string): string {
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  const encodedText = text ? encodeURIComponent(text) : '';
+  return `https://wa.me/${cleanPhone}${encodedText ? `?text=${encodedText}` : ''}`;
+}
 
 export function MobileBottomBar() {
   const { cartCount, setIsCartOpen } = useCart();
