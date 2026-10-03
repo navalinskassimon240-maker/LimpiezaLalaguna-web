@@ -26,11 +26,39 @@ export function Products() {
   const categories = useMemo(() => {
     const valid = productList.filter(Boolean);
     const unique = Array.from(new Set(valid.map(p => p?.category).filter(Boolean))) as string[];
-    return ['Todos', ...unique];
+    
+    // Position Combos and Promos right after 'Todos'
+    const isComboCat = (name: string) => {
+      const lower = name.toLowerCase();
+      return lower.includes('combo') || lower.includes('promo') || lower.includes('pack');
+    };
+
+    const comboCats = unique.filter(c => isComboCat(c));
+    const otherCats = unique.filter(c => !isComboCat(c));
+
+    return ['Todos', ...comboCats, ...otherCats];
   }, [productList]);
 
   const filteredProducts = useMemo(() => {
-    return productList.filter(p => {
+    const isComboProduct = (p: Product) => {
+      if (!p) return false;
+      const catLower = (p.category || '').toLowerCase();
+      const nameLower = (p.name || '').toLowerCase();
+      const tagLower = (p.tag || '').toLowerCase();
+      return (
+        catLower.includes('combo') ||
+        catLower.includes('promo') ||
+        catLower.includes('pack') ||
+        nameLower.startsWith('combo') ||
+        nameLower.includes('combo ') ||
+        nameLower.includes('promo ') ||
+        tagLower.includes('combo') ||
+        tagLower.includes('promo') ||
+        (Array.isArray(p.includes) && p.includes.length > 0)
+      );
+    };
+
+    const filtered = productList.filter(p => {
       if (!p) return false;
       const matchCat = selectedCategory === 'Todos' || p.category === selectedCategory;
       const matchSearch = searchTerm.trim() === '' || 
@@ -38,6 +66,15 @@ export function Products() {
         p.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.includes && p.includes.some(inc => inc?.toLowerCase().includes(searchTerm.toLowerCase())));
       return matchCat && matchSearch;
+    });
+
+    // Combos appear at the very beginning of the list
+    return [...filtered].sort((a, b) => {
+      const aIsCombo = isComboProduct(a);
+      const bIsCombo = isComboProduct(b);
+      if (aIsCombo && !bIsCombo) return -1;
+      if (!aIsCombo && bIsCombo) return 1;
+      return 0;
     });
   }, [productList, selectedCategory, searchTerm]);
 
