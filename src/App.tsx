@@ -19,8 +19,6 @@ import { MobileBottomBar } from './components/MobileBottomBar';
 import { BenefitsTicker } from './components/BenefitsTicker';
 import { FlyToCartContainer } from './components/FlyToCart';
 import { RevealOnScroll } from './components/RevealOnScroll';
-import { AnimationViewerModal } from './components/AnimationViewerModal';
-import { Sparkles } from 'lucide-react';
 
 // Helper para verificar ruta secreta /staff0
 const checkIsAdminRoute = () => {
@@ -36,7 +34,6 @@ const checkIsAdminRoute = () => {
 
 export default function App() {
   const [isAdminView, setIsAdminView] = useState<boolean>(checkIsAdminRoute);
-  const [isAnimationsModalOpen, setIsAnimationsModalOpen] = useState(false);
 
   useEffect(() => {
     const handleRouteChange = () => {
@@ -98,7 +95,7 @@ export default function App() {
           <Header />
           <main className="flex-grow">
             <Hero />
-            {/* Cinta continua de beneficios */}
+            {/* Cinta continua de beneficios en movimiento */}
             <BenefitsTicker />
             
             {/* Novedades y promociones con revelado suave */}
@@ -124,23 +121,6 @@ export default function App() {
           <FloatingWhatsApp />
           <MobileBottomBar />
           <UpdateNotifier />
-
-          {/* Botón flotante para ver y probar las animaciones */}
-          <button 
-            type="button"
-            onClick={() => setIsAnimationsModalOpen(true)}
-            className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:bottom-7 left-4 z-40 bg-slate-900/90 hover:bg-slate-800 text-white backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-xl border border-slate-700/80 flex items-center gap-2 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer"
-            title="Ver y probar todas las animaciones"
-          >
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline">Ver Animaciones & Código</span>
-            <span className="sm:hidden">Animaciones</span>
-          </button>
-
-          <AnimationViewerModal 
-            isOpen={isAnimationsModalOpen} 
-            onClose={() => setIsAnimationsModalOpen(false)} 
-          />
         </div>
       </div>
     </CartProvider>
