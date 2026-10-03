@@ -480,10 +480,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         imageUrl: productForm.imageUrl?.trim() || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800',
         basePrice,
         unitType: productForm.unitType === 'unidades' ? 'unidades' : 'litros',
-        tag: productForm.tag?.trim() || undefined,
-        tagColor: (customTagHex.trim() || productForm.tagColor?.trim()) || undefined,
+        tag: productForm.tag ? productForm.tag.trim() : '',
+        tagColor: (customTagHex.trim() || productForm.tagColor?.trim()) || '',
         createdAt: isCreatingProduct ? new Date().toISOString() : productForm.createdAt || new Date().toISOString(),
-        acknowledgedAt: undefined, // Fresh changes are tracked until admin marks them acknowledged or accepts
         options: productForm.options && productForm.options.length > 0 
           ? productForm.options 
           : [{ label: productForm.unitType === 'unidades' ? 'Unidad' : 'Bidón x 5 Lts', price: basePrice }]

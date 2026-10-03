@@ -156,14 +156,44 @@ export function subscribeProducts(
 }
 
 /**
+ * Helper to strip any undefined values from objects before writing to Firestore
+ */
+function sanitizeFirestoreObject<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = value;
+    }
+  }
+  return clean;
+}
+
+/**
  * Saves (creates or updates) a product in Firestore.
  */
 export async function saveProduct(product: Product): Promise<void> {
   const productDoc = doc(db, PRODUCTS_COLLECTION, product.id);
-  await setDoc(productDoc, {
-    ...product,
+  const dataToSave: Record<string, any> = {
+    id: product.id,
+    name: product.name ? product.name.trim() : '',
+    category: product.category ? product.category.trim() : 'Productos de Limpieza',
+    description: product.description ? product.description.trim() : '',
+    imageUrl: product.imageUrl ? product.imageUrl.trim() : '',
+    basePrice: typeof product.basePrice === 'number' ? product.basePrice : Number(product.basePrice) || 0,
+    unitType: product.unitType === 'unidades' ? 'unidades' : 'litros',
+    options: Array.isArray(product.options) ? product.options : [],
+    includes: Array.isArray(product.includes) ? product.includes : [],
+    tag: product.tag ? product.tag.trim() : '',
+    tagColor: product.tagColor ? product.tagColor.trim() : '',
+    createdAt: product.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
-  }, { merge: true });
+  };
+
+  if (product.acknowledgedAt) {
+    dataToSave.acknowledgedAt = product.acknowledgedAt;
+  }
+
+  await setDoc(productDoc, sanitizeFirestoreObject(dataToSave), { merge: true });
 }
 
 /**
@@ -269,10 +299,10 @@ export function subscribeAnnouncements(
  */
 export async function saveAnnouncement(item: AnnouncementItem): Promise<void> {
   const itemDoc = doc(db, ANNOUNCEMENTS_COLLECTION, item.id);
-  await setDoc(itemDoc, {
+  await setDoc(itemDoc, sanitizeFirestoreObject({
     ...item,
     updatedAt: new Date().toISOString()
-  }, { merge: true });
+  }), { merge: true });
 }
 
 /**
