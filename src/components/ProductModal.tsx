@@ -264,7 +264,7 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="flex flex-col gap-2">
                           {product.options.map((option) => {
                             const isSelected = selectedOption.label === option.label;
                             return (
@@ -272,25 +272,25 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                                 key={option.label}
                                 type="button"
                                 onClick={() => handlePresetSelect(option)}
-                                className={`p-3 rounded-2xl font-bold transition-all border-2 text-left flex items-center justify-between gap-2 cursor-pointer ${
+                                className={`w-full p-3 sm:p-3.5 rounded-2xl font-bold transition-all border-2 text-left flex items-center justify-between gap-3 cursor-pointer ${
                                   isSelected
-                                    ? 'border-blue-600 bg-blue-50/80 text-blue-900 shadow-sm ring-1 ring-blue-600/30'
-                                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-slate-50'
+                                    ? 'border-blue-600 bg-blue-50/90 text-blue-950 shadow-sm ring-2 ring-blue-600/20'
+                                    : 'border-slate-200 bg-white text-slate-800 hover:border-blue-300 hover:bg-slate-50'
                                 }`}
                               >
-                                <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
                                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                                    isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
+                                    isSelected ? 'border-blue-600 bg-blue-600 text-white shadow-xs' : 'border-slate-300 bg-white'
                                   }`}>
-                                    {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                    {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                                   </div>
-                                  <span className="text-xs sm:text-sm font-black truncate">
+                                  <span className="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug break-words">
                                     {option.label}
                                   </span>
                                 </div>
 
-                                <span className={`text-xs font-black shrink-0 px-2 py-0.5 rounded-lg ${
-                                  isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                                <span className={`text-xs sm:text-sm font-black shrink-0 px-2.5 py-1 rounded-xl whitespace-nowrap ${
+                                  isSelected ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-800'
                                 }`}>
                                   ${option.price.toLocaleString('es-AR')}
                                 </span>

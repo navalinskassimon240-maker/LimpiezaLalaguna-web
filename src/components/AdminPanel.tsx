@@ -1964,65 +1964,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                     Si tu foto muestra <strong>2 o más productos</strong> (por ejemplo: un <em>Bidón de Suavizante</em> y un <em>Jabón Líquido</em>), o si ofrecés distintas presentaciones/aromas con sus propios precios, configuralos acá para que el cliente elija cuál comprar.
                   </p>
 
-                  {/* Plantillas Rápidas con 1 Clic */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      Cargar rápido:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const bp = Number(productForm.basePrice) || 5200;
-                        setProductForm(prev => ({
-                          ...prev,
-                          options: [
-                            { label: 'Bidón de Suavizante para Ropa (5L)', price: bp },
-                            { label: 'Jabón Líquido para Ropa (5L)', price: bp }
-                          ]
-                        }));
-                      }}
-                      className="px-2.5 py-1 bg-white hover:bg-blue-100/60 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <Sparkles className="w-3 h-3 text-blue-600" />
-                      <span>Foto con 2 Productos (Suavizante / Jabón)</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const bp = Number(productForm.basePrice) || 0;
-                        setProductForm(prev => ({
-                          ...prev,
-                          options: [
-                            { label: 'Aroma Blanco Clásico (5L)', price: bp },
-                            { label: 'Aroma Celeste Frescura (5L)', price: bp },
-                            { label: 'Aroma Floral / Lila (5L)', price: bp }
-                          ]
-                        }));
-                      }}
-                      className="px-2.5 py-1 bg-white hover:bg-purple-100/60 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <Sparkles className="w-3 h-3 text-purple-600" />
-                      <span>3 Variedades / Aromas</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const bp = Number(productForm.basePrice) || 0;
-                        setProductForm(prev => ({
-                          ...prev,
-                          options: [
-                            { label: productForm.unitType === 'unidades' ? '1 Unidad' : 'Bidón x 5 Lts', price: bp }
-                          ]
-                        }));
-                      }}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs"
-                    >
-                      <span>1 Sola Opción</span>
-                    </button>
-                  </div>
-
                   {/* Listado dinámico de opciones */}
                   <div className="space-y-2 pt-1.5">
                     {(productForm.options || []).map((opt, idx) => (
