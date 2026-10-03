@@ -133,7 +133,7 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
             {/* Image Section */}
             <div className="md:w-2/5 relative h-40 sm:h-52 md:h-auto overflow-hidden bg-slate-100 shrink-0">
               <img 
-                src={product.imageUrl} 
+                src={product.imageUrl?.trim() || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800'} 
                 alt={product.name}
                 onError={(e) => {
                   e.currentTarget.onerror = null;
@@ -142,7 +142,22 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                 className="w-full h-full object-cover"
               />
               
-              <div className="absolute bottom-3 left-3 z-20">
+              <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2">
+                {product.tag && product.tag.trim() !== '' && (
+                  <div 
+                    className={`px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 font-bold text-xs text-white ${
+                      product.tagColor && product.tagColor.startsWith('bg-') ? product.tagColor : 'bg-emerald-600'
+                    }`}
+                    style={
+                      product.tagColor && !product.tagColor.startsWith('bg-')
+                        ? { backgroundColor: product.tagColor }
+                        : undefined
+                    }
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{product.tag}</span>
+                  </div>
+                )}
                 <div className={`px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 font-bold text-xs ${
                   isCombo 
                     ? 'bg-emerald-600 text-white' 

@@ -131,7 +131,11 @@ export function subscribeProducts(
           options: Array.isArray(data.options) ? data.options : [
             { label: 'Unidad', price: typeof data.basePrice === 'number' ? data.basePrice : 0 }
           ],
-          includes: data.includes || []
+          includes: data.includes || [],
+          tag: data.tag ? String(data.tag).trim() : undefined,
+          tagColor: data.tagColor ? String(data.tagColor).trim() : undefined,
+          createdAt: data.createdAt ? String(data.createdAt) : undefined,
+          acknowledgedAt: data.acknowledgedAt ? String(data.acknowledgedAt) : undefined
         });
       });
 
@@ -168,6 +172,30 @@ export async function saveProduct(product: Product): Promise<void> {
 export async function deleteProduct(productId: string): Promise<void> {
   const productDoc = doc(db, PRODUCTS_COLLECTION, productId);
   await deleteDoc(productDoc);
+}
+
+/**
+ * Marks product changes as acknowledged/accepted so it is treated as baseline and no longer alerts.
+ */
+export async function acknowledgeProductChanges(productId: string): Promise<void> {
+  const productDoc = doc(db, PRODUCTS_COLLECTION, productId);
+  await setDoc(productDoc, {
+    acknowledgedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+/**
+ * Batch marks multiple products as acknowledged/accepted.
+ */
+export async function acknowledgeAllProductChanges(productIds: string[]): Promise<void> {
+  if (!productIds || productIds.length === 0) return;
+  const batch = writeBatch(db);
+  const now = new Date().toISOString();
+  for (const id of productIds) {
+    const productDoc = doc(db, PRODUCTS_COLLECTION, id);
+    batch.set(productDoc, { acknowledgedAt: now }, { merge: true });
+  }
+  await batch.commit();
 }
 
 /**

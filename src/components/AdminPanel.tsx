@@ -26,7 +26,10 @@ import {
   RotateCcw,
   CheckCircle2,
   Info,
-  ShieldCheck
+  ShieldCheck,
+  Tag,
+  Palette,
+  CheckCheck
 } from 'lucide-react';
 import { Product, ProductOption } from '../types';
 import { products as initialProducts } from '../data/products';
@@ -40,6 +43,8 @@ import {
   verifyAdminPin, 
   setAdminPin,
   restoreAllInitialAnnouncements,
+  acknowledgeProductChanges,
+  acknowledgeAllProductChanges,
   AnnouncementItem 
 } from '../services/storeService';
 import { compressImageFile } from '../utils/imageCompressor';
@@ -61,6 +66,18 @@ export interface ProductDiff {
     newValue: string;
   }[];
 }
+
+// Preset color options for product tags
+const TAG_COLOR_PRESETS = [
+  { label: 'Verde Esmeralda', value: 'bg-emerald-600 text-white', color: '#059669' },
+  { label: 'Azul Océano', value: 'bg-blue-600 text-white', color: '#2563eb' },
+  { label: 'Rojo Pasión / Oferta', value: 'bg-rose-600 text-white', color: '#e11d48' },
+  { label: 'Naranja Promo', value: 'bg-amber-500 text-white', color: '#f59e0b' },
+  { label: 'Violeta Premium', value: 'bg-purple-600 text-white', color: '#9333ea' },
+  { label: 'Negro Elegante', value: 'bg-slate-900 text-white', color: '#0f172a' },
+  { label: 'Rosa / Magenta', value: 'bg-pink-600 text-white', color: '#db2777' },
+  { label: 'Celeste / Cyan', value: 'bg-cyan-600 text-white', color: '#0891b2' },
+];
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   // Authentication state
@@ -110,8 +127,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
     imageUrl: '',
     basePrice: 0,
     unitType: 'litros',
+    tag: '',
+    tagColor: 'bg-emerald-600 text-white',
     options: [{ label: 'Bidón x 5 Lts', price: 0 }]
   });
+
+  // Custom tag custom hex input state
+  const [customTagHex, setCustomTagHex] = useState('');
 
   // Announcement Editing / Creating
   const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementItem | null>(null);
@@ -178,28 +200,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   }, [isAuthenticated]);
 
   // -------------------------------------------------------------
-  // SMART CHANGE DETECTION (Compares current products with factory initial products)
+  // SMART CHANGE DETECTION
+  // 1. New products: tag as 'new' only if created within 5 days and not acknowledged yet
+  // 2. Modified products: tag as 'modified' only if not acknowledged yet
   // -------------------------------------------------------------
   const productDiffsMap = useMemo(() => {
     const diffMap = new Map<string, ProductDiff>();
 
     products.forEach((prod) => {
       const initial = initialProducts.find((p) => p.id === prod.id);
+
+      // New Product Case (Not in initial 53 factory catalog)
       if (!initial) {
+        // Calculate days since creation (default 5-day window)
+        const daysSinceCreation = prod.createdAt 
+          ? (Date.now() - new Date(prod.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+          : 0;
+
+        // If acknowledged by admin or older than 5 days, treat as permanent standard catalog product
+        const isStillNew = !prod.acknowledgedAt && daysSinceCreation <= 5;
+
         diffMap.set(prod.id, {
-          status: 'new',
+          status: isStillNew ? 'new' : 'unchanged',
           product: prod,
           changes: [
             {
               field: 'new',
               label: 'Producto nuevo',
-              oldValue: 'No existía en catálogo de fábrica',
+              oldValue: 'No existía en catálogo inicial',
               newValue: `Creado como "${prod.name}" ($${prod.basePrice.toLocaleString('es-AR')})`
             }
           ]
         });
         return;
       }
+
+      // If changes have been acknowledged/accepted by admin, don't flag as pending modified
+      const isAcknowledged = Boolean(prod.acknowledgedAt);
 
       const changes: { field: string; label: string; oldValue: string; newValue: string }[] = [];
 
@@ -225,8 +262,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         changes.push({
           field: 'category',
           label: 'Categoría',
-          oldValue: initial.category,
-          newValue: prod.category
+          oldValue: initial.category || '(Sin categoría)',
+          newValue: prod.category || '(Sin categoría)'
         });
       }
 
@@ -257,7 +294,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         });
       }
 
-      if (changes.length > 0) {
+      if (prod.tag && prod.tag.trim() !== '') {
+        changes.push({
+          field: 'tag',
+          label: 'Etiqueta personalizada',
+          oldValue: '(Sin etiqueta)',
+          newValue: `"${prod.tag}"`
+        });
+      }
+
+      if (changes.length > 0 && !isAcknowledged) {
         diffMap.set(prod.id, {
           status: 'modified',
           product: prod,
@@ -303,7 +349,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         setIsAuthenticated(true);
         sessionStorage.setItem('laguna_admin_auth', 'true');
       } else {
-        setPinError('Código incorrecto. Por favor verificá e intentá nuevamente.');
+        setPinError('Código incorrecto.');
       }
     } catch {
       setPinError('Error de conexión al verificar el código.');
@@ -340,9 +386,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         try {
           await saveProduct({
             ...prod,
-            imageUrl
+            imageUrl,
+            acknowledgedAt: undefined // Trigger change tracking until acknowledged
           });
-          showToast(`✅ Foto de "${prod.name}" actualizada con éxito.`);
+          showToast(`✅ Foto de "${prod.name}" actualizada.`);
         } catch (err: any) {
           alert('Error al actualizar la foto: ' + (err?.message || ''));
         } finally {
@@ -367,9 +414,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       if (prod) {
         await saveProduct({
           ...prod,
-          imageUrl: compressedBase64
+          imageUrl: compressedBase64,
+          acknowledgedAt: undefined
         });
-        showToast(`✅ Foto de "${prod.name}" actualizada con éxito.`);
+        showToast(`✅ Foto de "${prod.name}" actualizada.`);
       }
     } catch (err: any) {
       alert('Error al procesar la foto: ' + (err?.message || 'Error desconocido'));
@@ -389,8 +437,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       imageUrl: '',
       basePrice: 0,
       unitType: 'litros',
+      tag: '',
+      tagColor: 'bg-emerald-600 text-white',
       options: [{ label: 'Bidón x 5 Lts', price: 0 }]
     });
+    setCustomTagHex('');
     setIsCreatingProduct(true);
     setEditingProduct(null);
   };
@@ -399,8 +450,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   const startEditProduct = (prod: Product) => {
     setProductForm({
       ...prod,
+      tag: prod.tag || '',
+      tagColor: prod.tagColor || 'bg-emerald-600 text-white',
       options: prod.options && prod.options.length > 0 ? [...prod.options] : [{ label: 'Unidad', price: prod.basePrice }]
     });
+    setCustomTagHex(prod.tagColor && prod.tagColor.startsWith('#') ? prod.tagColor : '');
     setEditingProduct(prod);
     setIsCreatingProduct(false);
   };
@@ -426,6 +480,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         imageUrl: productForm.imageUrl?.trim() || 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=800',
         basePrice,
         unitType: productForm.unitType === 'unidades' ? 'unidades' : 'litros',
+        tag: productForm.tag?.trim() || undefined,
+        tagColor: (customTagHex.trim() || productForm.tagColor?.trim()) || undefined,
+        createdAt: isCreatingProduct ? new Date().toISOString() : productForm.createdAt || new Date().toISOString(),
+        acknowledgedAt: undefined, // Fresh changes are tracked until admin marks them acknowledged or accepts
         options: productForm.options && productForm.options.length > 0 
           ? productForm.options 
           : [{ label: productForm.unitType === 'unidades' ? 'Unidad' : 'Bidón x 5 Lts', price: basePrice }]
@@ -464,6 +522,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
         }
       }
     });
+  };
+
+  // -------------------------------------------------------------
+  // ACKNOWLEDGE / ACCEPT PRODUCT CHANGES (Removes pending alert)
+  // -------------------------------------------------------------
+  const handleAcknowledgeSingleProduct = async (diff: ProductDiff) => {
+    setIsProcessing(true);
+    try {
+      await acknowledgeProductChanges(diff.product.id);
+      showToast(`✓ Cambios de "${diff.product.name}" fijados como versión definitiva.`);
+    } catch (err: any) {
+      alert('Error al fijar cambios: ' + (err?.message || ''));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Accept all pending product changes at once
+  const handleAcknowledgeAllProducts = async () => {
+    const ids = [...modifiedProductsList.map((d) => d.product.id), ...newProductsList.map((d) => d.product.id)];
+    if (ids.length === 0) return;
+
+    setIsProcessing(true);
+    try {
+      await acknowledgeAllProductChanges(ids);
+      showToast(`✓ Todos los cambios fueron aceptados como versión permanente.`);
+    } catch (err: any) {
+      alert('Error al aceptar cambios: ' + (err?.message || ''));
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // -------------------------------------------------------------
@@ -635,7 +724,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   const handleChangePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPinValue.trim().length < 4) {
-      alert('El código debe tener al menos 4 caracteres (ej: 4 números).');
+      alert('El código debe tener al menos 4 caracteres.');
       return;
     }
 
@@ -670,55 +759,59 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   });
 
   // -------------------------------------------------------------
-  // VIEW 1: PIN LOCK SCREEN (If not authenticated)
+  // VIEW 1: ELEGANT, MINIMALIST & PROFESSIONAL PIN LOGIN SCREEN
   // -------------------------------------------------------------
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 relative">
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-200">
+        
+        {/* Subtle Ambient Background Gradients */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-10 right-10 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-2xl rounded-3xl p-8 sm:p-10 shadow-2xl border border-slate-800/80 relative z-10">
           
           <button
             onClick={onBackToStore}
-            className="absolute top-6 left-6 p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold"
+            className="absolute top-6 left-6 p-2 text-slate-400 hover:text-slate-200 rounded-xl hover:bg-slate-800 transition-colors flex items-center gap-1.5 text-xs font-semibold"
             title="Volver a la tienda"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Volver</span>
+            <span>Tienda</span>
           </button>
 
-          <div className="text-center pt-6 pb-4">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-600 via-teal-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25 text-white">
-              <Lock className="w-8 h-8" />
+          <div className="text-center pt-6 pb-2">
+            <div className="w-14 h-14 mx-auto mb-4 bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl flex items-center justify-center shadow-lg shadow-black/40 text-emerald-400">
+              <Lock className="w-6 h-6" />
             </div>
             
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-              Panel de Control
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              Panel de Gestión
             </h2>
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 mt-1">
+            <p className="text-xs font-medium text-slate-400 mt-1">
               Limpieza La Laguna
-            </p>
-            <p className="text-sm text-slate-500 mt-2">
-              Ingresá tu código de seguridad para administrar productos, fotos y novedades.
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4 mt-4">
+          <form onSubmit={handleLogin} className="space-y-4 mt-6">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Código de Acceso / PIN
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 text-center">
+                Código de Seguridad
               </label>
-              <input
-                type="password"
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                placeholder="Ingresá el código..."
-                className="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-blue-600 rounded-2xl text-center text-xl font-bold tracking-widest outline-none transition-colors"
-                autoFocus
-              />
+              <div className="relative">
+                <input
+                  type="password"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value)}
+                  placeholder="••••"
+                  className="w-full px-4 py-3.5 bg-slate-950/80 border border-slate-700/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 rounded-2xl text-center text-2xl font-bold tracking-[0.4em] text-white outline-none transition-all placeholder:text-slate-600 placeholder:tracking-normal"
+                  autoFocus
+                />
+              </div>
             </div>
 
             {pinError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-semibold flex items-center gap-2">
+              <div className="p-3 bg-red-950/50 border border-red-800/60 rounded-xl text-xs text-red-400 font-medium flex items-center gap-2 justify-center">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{pinError}</span>
               </div>
@@ -727,30 +820,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
             <button
               type="submit"
               disabled={isVerifying || !pinInput.trim()}
-              className="w-full py-4 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 disabled:opacity-50 text-white font-black text-base rounded-2xl shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-bold text-sm rounded-2xl shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
             >
               {isVerifying ? (
                 <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin" />
                   <span>Verificando...</span>
                 </>
               ) : (
                 <>
-                  <Unlock className="w-5 h-5" />
-                  <span>Entrar al Panel</span>
+                  <Unlock className="w-4 h-4" />
+                  <span>Ingresar</span>
                 </>
               )}
             </button>
           </form>
-
-          <div className="mt-6 pt-5 border-t border-slate-100 text-center">
-            <p className="text-xs text-slate-400">
-              💡 Código por defecto inicial: <span className="font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">1234</span>
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Podrás cambiarlo en cualquier momento desde adentro del panel.
-            </p>
-          </div>
 
         </div>
       </div>
@@ -1026,7 +1110,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                         />
 
                         {/* Status Badges on Image */}
-                        <div className="absolute top-2 left-2 flex flex-col gap-1">
+                        <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                          {/* Custom Tag configured by user */}
+                          {prod.tag && prod.tag.trim() !== '' && (
+                            <span 
+                              className={`px-2.5 py-1 text-white text-[10px] font-black uppercase rounded-lg shadow-md flex items-center gap-1 ${
+                                prod.tagColor && prod.tagColor.startsWith('bg-') ? prod.tagColor : 'bg-emerald-600'
+                              }`}
+                              style={
+                                prod.tagColor && !prod.tagColor.startsWith('bg-')
+                                  ? { backgroundColor: prod.tagColor }
+                                  : undefined
+                              }
+                            >
+                              <Tag className="w-3 h-3" />
+                              <span>{prod.tag}</span>
+                            </span>
+                          )}
+
                           {isModified && (
                             <span className="px-2.5 py-1 bg-amber-500 text-white text-[10px] font-black uppercase rounded-lg shadow-md flex items-center gap-1">
                               <AlertCircle className="w-3 h-3" />
@@ -1081,7 +1182,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                       {isModified && diff && diff.changes.length > 0 && (
                         <div className="mt-2.5 p-2 bg-amber-50 rounded-xl border border-amber-200/70 text-[11px] text-amber-900 space-y-0.5">
                           <p className="font-black text-[10px] uppercase tracking-wider text-amber-700">
-                            Cambios respecto al original:
+                            Cambios detectados:
                           </p>
                           {diff.changes.slice(0, 2).map((c, i) => (
                             <p key={i} className="line-clamp-1">
@@ -1124,14 +1225,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
 
                       {/* Revert Single Product Button (Only on modified products) */}
                       {isModified && diff && (
-                        <button
-                          onClick={() => handleRevertSingleProduct(diff)}
-                          className="w-full py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                          title="Volver a los valores originales de fábrica solo para este producto"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Revertir solo este producto</span>
-                        </button>
+                        <div className="flex gap-1.5 pt-1">
+                          <button
+                            onClick={() => handleAcknowledgeSingleProduct(diff)}
+                            className="flex-1 py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                            title="Aceptar estos cambios como la versión definitiva y quitar el aviso"
+                          >
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Aceptar Cambios</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleRevertSingleProduct(diff)}
+                            className="py-1.5 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                            title="Volver a los valores originales de fábrica solo para este producto"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Revertir</span>
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -1170,38 +1282,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                   <h2 className="text-xl font-black text-slate-900">
                     Historial y Detección de Cambios
                   </h2>
-                  <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl">
-                    Acá podés ver exactamente qué productos fueron modificados respecto a fábrica, cuáles son nuevos agregados por vos, y podés revertir <strong>producto por producto</strong> sin riesgo de perder tu progreso.
+                  <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                    Acá podés ver qué productos tienen cambios pendientes. Podés <strong>aceptar y fijar los cambios</strong> como definitivos para que no aparezca más la alerta, o <strong>revertir producto por producto</strong> a fábrica sin tocar el resto.
                   </p>
                 </div>
 
-                {/* Safe Metrics */}
-                <div className="flex items-center gap-3">
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2.5 text-center">
-                    <span className="text-lg font-black text-amber-800 block leading-none">
-                      {modifiedProductsList.length}
-                    </span>
-                    <span className="text-[10px] font-bold text-amber-700 uppercase">
-                      Modificados
-                    </span>
-                  </div>
+                {/* Actions & Metrics */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  {(modifiedProductsList.length > 0 || newProductsList.length > 0) && (
+                    <button
+                      onClick={handleAcknowledgeAllProducts}
+                      disabled={isProcessing}
+                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                    >
+                      <CheckCheck className="w-4 h-4" />
+                      <span>Aceptar Todos los Cambios</span>
+                    </button>
+                  )}
 
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 text-center">
-                    <span className="text-lg font-black text-emerald-800 block leading-none">
-                      {newProductsList.length}
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-700 uppercase">
-                      Nuevos
-                    </span>
-                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-2 text-center">
+                      <span className="text-lg font-black text-amber-800 block leading-none">
+                        {modifiedProductsList.length}
+                      </span>
+                      <span className="text-[10px] font-bold text-amber-700 uppercase">
+                        Modificados
+                      </span>
+                    </div>
 
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-center">
-                    <span className="text-lg font-black text-slate-700 block leading-none">
-                      {products.length}
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">
-                      Total en Web
-                    </span>
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2 text-center">
+                      <span className="text-lg font-black text-emerald-800 block leading-none">
+                        {newProductsList.length}
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 uppercase">
+                        Nuevos (&lt; 5d)
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1215,16 +1331,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                   <span>Productos Modificados ({modifiedProductsList.length})</span>
                 </h3>
                 <span className="text-xs text-slate-500">
-                  Podés revertir cada uno individualmente
+                  Podés aceptar los cambios o revertirlos individualmente
                 </span>
               </div>
 
               {modifiedProductsList.length === 0 ? (
                 <div className="bg-white rounded-3xl p-8 text-center border border-slate-200">
                   <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-                  <h4 className="font-bold text-slate-800 text-sm">No hay productos modificados</h4>
+                  <h4 className="font-bold text-slate-800 text-sm">No hay cambios pendientes</h4>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Todos los productos de fábrica se encuentran en su valor original.
+                    Todos los productos están aceptados o en su estado original.
                   </p>
                 </div>
               ) : (
@@ -1257,7 +1373,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                         {/* List of Differences */}
                         <div className="mt-4 p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200/60 space-y-2">
                           <p className="text-[11px] font-black uppercase text-amber-900">
-                            Detalle de cambios detectados:
+                            Detalle de cambios:
                           </p>
                           <ul className="space-y-1.5 text-xs text-slate-700">
                             {diff.changes.map((change, idx) => (
@@ -1277,20 +1393,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                         <button
-                          onClick={() => startEditProduct(diff.product)}
-                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                          onClick={() => handleAcknowledgeSingleProduct(diff)}
+                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                         >
-                          Seguir Editando
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Aceptar y Fijar Cambios</span>
                         </button>
 
                         <button
                           onClick={() => handleRevertSingleProduct(diff)}
-                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          className="px-3.5 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                         >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Revertir solo este producto</span>
+                          <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Revertir a Fábrica</span>
                         </button>
                       </div>
                     </div>
@@ -1302,19 +1419,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
             {/* Section 2: Newly Created Products */}
             <div className="space-y-4 pt-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-emerald-600" />
-                  <span>Productos Nuevos Agregados ({newProductsList.length})</span>
-                </h3>
-                <span className="text-xs text-slate-500">
-                  Creados manualmente por vos
-                </span>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-emerald-600" />
+                    <span>Productos Nuevos Recientes ({newProductsList.length})</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    La etiqueta "Nuevo" desaparece automáticamente a los 5 días o cuando hacés clic en "Fijar como Permanente".
+                  </p>
+                </div>
               </div>
 
               {newProductsList.length === 0 ? (
                 <div className="bg-white rounded-3xl p-6 text-center border border-slate-200">
                   <p className="text-xs text-slate-500">
-                    Aún no agregaste productos nuevos adicionales. Podés crear uno con el botón "Agregar Producto Nuevo".
+                    No hay productos nuevos pendientes en los últimos 5 días.
                   </p>
                 </div>
               ) : (
@@ -1322,7 +1441,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                   {newProductsList.map((diff) => (
                     <div 
                       key={diff.product.id}
-                      className="bg-white rounded-3xl p-4 shadow-sm border border-emerald-200 flex items-center justify-between gap-3"
+                      className="bg-white rounded-3xl p-4 shadow-sm border border-emerald-200 flex flex-col justify-between gap-3"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <img 
@@ -1330,7 +1449,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                           alt={diff.product.name}
                           className="w-12 h-12 rounded-xl object-cover bg-slate-100 shrink-0 border border-slate-200"
                         />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <h4 className="font-bold text-slate-900 text-xs truncate">
                             {diff.product.name}
                           </h4>
@@ -1340,21 +1459,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
                         <button
-                          onClick={() => startEditProduct(diff.product)}
-                          className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl"
-                          title="Editar"
+                          onClick={() => handleAcknowledgeSingleProduct(diff)}
+                          className="py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                         >
-                          <Edit3 className="w-3.5 h-3.5" />
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Fijar como Permanente</span>
                         </button>
-                        <button
-                          onClick={() => handleDeleteProduct(diff.product)}
-                          className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => startEditProduct(diff.product)}
+                            className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl"
+                            title="Editar"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(diff.product)}
+                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1507,7 +1636,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
 
             <h2 className="text-xl font-black text-slate-900">Cambiar Código PIN de Acceso</h2>
             <p className="text-xs text-slate-500 mt-1">
-              Podés cambiar el código que se pide para entrar a este panel.
+              Podés cambiar el código de seguridad que se pide para ingresar al panel.
             </p>
 
             <form onSubmit={handleChangePin} className="space-y-4 mt-6">
@@ -1524,7 +1653,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                   maxLength={12}
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Mínimo 4 números o letras fáciles de recordar.
+                  Mínimo 4 caracteres fáciles de recordar.
                 </p>
               </div>
 
@@ -1549,7 +1678,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       </main>
 
       {/* ------------------------------------------------------------- */}
-      {/* MODAL: ADD / EDIT PRODUCT                                     */}
+      {/* MODAL: ADD / EDIT PRODUCT (WITH CUSTOM TAGS & COLORS)         */}
       {/* ------------------------------------------------------------- */}
       {(isCreatingProduct || editingProduct) && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
@@ -1653,6 +1782,69 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                     />
                     <span>Unidades / Paquetes</span>
                   </label>
+                </div>
+              </div>
+
+              {/* Custom Tag & Color Customizer Section */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase text-slate-800 flex items-center gap-1.5">
+                    <Tag className="w-4 h-4 text-emerald-600" />
+                    <span>Etiqueta Destacada / Badge (Opcional)</span>
+                  </label>
+                  {productForm.tag && (
+                    <span 
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase shadow-xs text-white ${
+                        customTagHex ? '' : (productForm.tagColor || 'bg-emerald-600')
+                      }`}
+                      style={customTagHex ? { backgroundColor: customTagHex } : undefined}
+                    >
+                      {productForm.tag}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <input
+                      type="text"
+                      value={productForm.tag || ''}
+                      onChange={(e) => setProductForm((prev) => ({ ...prev, tag: e.target.value }))}
+                      placeholder="Ej: ¡Más Vendido!, Oferta, 2x1..."
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold outline-none focus:border-blue-600"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Dejá vacío si no querés ninguna etiqueta.
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                      <Palette className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Elegí el color:</span>
+                    </p>
+                    
+                    {/* Preset color chips */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {TAG_COLOR_PRESETS.map((preset) => (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => {
+                            setProductForm((prev) => ({ ...prev, tagColor: preset.value }));
+                            setCustomTagHex('');
+                          }}
+                          className={`w-6 h-6 rounded-full transition-transform cursor-pointer border ${
+                            productForm.tagColor === preset.value && !customTagHex
+                              ? 'scale-125 ring-2 ring-slate-800 border-white shadow-sm' 
+                              : 'opacity-80 hover:opacity-100 border-black/10'
+                          }`}
+                          style={{ backgroundColor: preset.color }}
+                          title={preset.label}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 

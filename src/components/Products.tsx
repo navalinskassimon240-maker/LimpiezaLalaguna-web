@@ -132,13 +132,27 @@ export function Products() {
                         className="w-full h-full object-cover transform group-hover:scale-110 transition-all duration-500 ease-out"
                       />
                       
-                      {/* Combo Badge on top of image */}
-                      {isCombo && (
+                      {/* Custom Product Tag (or Combo Badge) */}
+                      {product.tag && product.tag.trim() !== '' ? (
+                        <div 
+                          className={`absolute top-2.5 left-2.5 z-20 text-white text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 ${
+                            product.tagColor && product.tagColor.startsWith('bg-') ? product.tagColor : 'bg-emerald-600'
+                          }`}
+                          style={
+                            product.tagColor && !product.tagColor.startsWith('bg-')
+                              ? { backgroundColor: product.tagColor }
+                              : undefined
+                          }
+                        >
+                          <Sparkles className="w-3 h-3 text-white/80" />
+                          <span>{product.tag}</span>
+                        </div>
+                      ) : isCombo ? (
                         <div className="absolute top-2.5 left-2.5 z-20 bg-emerald-600 text-white text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
                           <Sparkles className="w-3 h-3 text-emerald-200" />
                           <span>Pack Completo</span>
                         </div>
-                      )}
+                      ) : null}
 
                       {/* Floating View & Add Buttons on Image Hover */}
                       <div className="absolute inset-0 z-20 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">

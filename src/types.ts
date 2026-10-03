@@ -13,6 +13,10 @@ export interface Product {
   unitType: 'litros' | 'unidades';
   options: ProductOption[];
   includes?: string[];
+  tag?: string;
+  tagColor?: string;
+  createdAt?: string;
+  acknowledgedAt?: string;
 }
 
 export interface CartItem extends Omit<Product, 'options'> {
