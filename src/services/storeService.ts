@@ -9,8 +9,9 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Product } from '../types';
+import { Product, Coupon } from '../types';
 import { products as initialProducts } from '../data/products';
+import { initialCoupons } from '../data/coupons';
 import { siteConfig } from '../data/config';
 
 export interface AnnouncementItem {
@@ -31,6 +32,7 @@ const PRODUCTS_COLLECTION = 'products';
 const ANNOUNCEMENTS_COLLECTION = 'announcements';
 const SETTINGS_COLLECTION = 'settings';
 const RESTORE_POINTS_COLLECTION = 'restore_points';
+const COUPONS_COLLECTION = 'coupons';
 const DEFAULT_PIN = '1234';
 const LOCAL_STORAGE_RESTORE_KEY = 'laguna_local_restore_points';
 
@@ -324,6 +326,134 @@ export async function saveAnnouncement(item: AnnouncementItem): Promise<void> {
 export async function deleteAnnouncement(id: string): Promise<void> {
   const itemDoc = doc(db, ANNOUNCEMENTS_COLLECTION, id);
   await deleteDoc(itemDoc);
+}
+
+// Flag for coupon seeding
+let isSeedingCoupons = false;
+
+/**
+ * Real-time subscription to discount coupons.
+ * Seeds with initialCoupons if collection is empty.
+ */
+export function subscribeCoupons(
+  onUpdate: (coupons: Coupon[]) => void,
+  onError?: (error: Error) => void
+): () => void {
+  const couponsRef = collection(db, COUPONS_COLLECTION);
+
+  // Broadcast initialCoupons immediately for instant render
+  onUpdate(initialCoupons);
+
+  const unsubscribe = onSnapshot(
+    couponsRef,
+    async (snapshot) => {
+      if (snapshot.empty && !isSeedingCoupons) {
+        isSeedingCoupons = true;
+        try {
+          const batch = writeBatch(db);
+          for (const coup of initialCoupons) {
+            const coupDoc = doc(db, COUPONS_COLLECTION, coup.code.toUpperCase());
+            batch.set(coupDoc, {
+              ...coup,
+              code: coup.code.toUpperCase(),
+              updatedAt: new Date().toISOString()
+            });
+          }
+          await batch.commit();
+        } catch (e) {
+          console.warn('No se pudo sembrar cupones en Firestore:', e);
+        } finally {
+          isSeedingCoupons = false;
+        }
+        onUpdate(initialCoupons);
+        return;
+      }
+
+      const list: Coupon[] = [];
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        list.push({
+          id: docSnap.id,
+          code: (data.code || docSnap.id).toUpperCase(),
+          discountType: data.discountType === 'fixed' ? 'fixed' : 'percentage',
+          discountValue: Number(data.discountValue) || 0,
+          description: data.description || '',
+          minSpend: typeof data.minSpend === 'number' ? data.minSpend : Number(data.minSpend) || 0,
+          appliesTo: data.appliesTo === 'combos' ? 'combos' : 'all',
+          active: data.active !== false,
+          expiresAt: data.expiresAt || undefined,
+          badgeText: data.badgeText || undefined,
+          updatedAt: data.updatedAt
+        });
+      });
+
+      if (list.length > 0) {
+        onUpdate(list);
+      } else {
+        onUpdate(initialCoupons);
+      }
+    },
+    (err) => {
+      console.warn('Error en suscripción de cupones Firestore:', err);
+      onUpdate(initialCoupons);
+      if (onError) onError(err);
+    }
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * Saves (creates or updates) a coupon in Firestore.
+ */
+export async function saveCoupon(coupon: Coupon): Promise<void> {
+  const code = coupon.code.trim().toUpperCase();
+  const couponDoc = doc(db, COUPONS_COLLECTION, code);
+  await setDoc(couponDoc, sanitizeFirestoreObject({
+    ...coupon,
+    code,
+    discountValue: Number(coupon.discountValue) || 0,
+    minSpend: Number(coupon.minSpend) || 0,
+    active: Boolean(coupon.active),
+    updatedAt: new Date().toISOString()
+  }), { merge: true });
+}
+
+/**
+ * Deletes a coupon from Firestore.
+ */
+export async function deleteCoupon(code: string): Promise<void> {
+  const cleanCode = code.trim().toUpperCase();
+  const couponDoc = doc(db, COUPONS_COLLECTION, cleanCode);
+  await deleteDoc(couponDoc);
+}
+
+/**
+ * Quick toggle for coupon active status.
+ */
+export async function toggleCouponStatus(code: string, active: boolean): Promise<void> {
+  const cleanCode = code.trim().toUpperCase();
+  const couponDoc = doc(db, COUPONS_COLLECTION, cleanCode);
+  await setDoc(couponDoc, {
+    active: Boolean(active),
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+/**
+ * Restores initial 5 coupons.
+ */
+export async function restoreInitialCoupons(): Promise<void> {
+  const batch = writeBatch(db);
+  for (const coup of initialCoupons) {
+    const ref = doc(db, COUPONS_COLLECTION, coup.code.toUpperCase());
+    batch.set(ref, {
+      ...coup,
+      code: coup.code.toUpperCase(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+  await batch.commit();
 }
 
 /**
@@ -650,3 +780,4 @@ export async function deleteRestorePoint(pointId: string): Promise<void> {
   const localList = getLocalRestorePoints();
   saveLocalRestorePoints(localList.filter(p => p.id !== pointId));
 }
+

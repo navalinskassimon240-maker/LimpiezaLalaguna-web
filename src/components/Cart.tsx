@@ -1,7 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Plus, ShoppingBag, Trash2, ArrowRight, Truck, Store, Loader2 } from 'lucide-react';
+import { 
+  X, 
+  Minus, 
+  Plus, 
+  ShoppingBag, 
+  Trash2, 
+  ArrowRight, 
+  Truck, 
+  Store, 
+  Loader2, 
+  Tag, 
+  Ticket, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
 import { createWhatsAppUrl } from '../utils/whatsapp';
@@ -10,11 +25,31 @@ type CheckoutStep = 'cart' | 'checkout';
 
 export function Cart() {
   const [mounted, setMounted] = useState(false);
-  const { isCartOpen, setIsCartOpen, cartItems, updateQuantity, removeFromCart, clearCart, cartTotal, cartCount } = useCart();
+  const { 
+    isCartOpen, 
+    setIsCartOpen, 
+    cartItems, 
+    updateQuantity, 
+    removeFromCart, 
+    clearCart, 
+    cartTotal, 
+    cartCount,
+    availableCoupons,
+    appliedCoupon,
+    couponError,
+    applyCoupon,
+    removeCoupon,
+    discountAmount,
+    finalTotal
+  } = useCart();
   const [step, setStep] = useState<'cart' | 'checkout'>('cart');
   const [shippingMethod, setShippingMethod] = useState<'delivery' | 'pickup'>('delivery');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
   
+  // Coupon input state
+  const [couponCodeInput, setCouponCodeInput] = useState('');
+  const [couponFeedback, setCouponFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   // Delivery fields
   const [address, setAddress] = useState('');
   const [receiverName, setReceiverName] = useState('');
@@ -48,7 +83,23 @@ export function Cart() {
     setTimeout(() => {
       setStep('cart');
       setIsProcessing(false);
+      setCouponFeedback(null);
     }, 300);
+  };
+
+  const handleApplyCoupon = (codeToApply?: string) => {
+    const code = (codeToApply || couponCodeInput).trim().toUpperCase();
+    if (!code) {
+      setCouponFeedback({ type: 'error', message: 'Por favor escribí el código de cupón' });
+      return;
+    }
+    const result = applyCoupon(code);
+    if (result.success) {
+      setCouponFeedback({ type: 'success', message: result.message });
+      setCouponCodeInput('');
+    } else {
+      setCouponFeedback({ type: 'error', message: result.message });
+    }
   };
 
   const isFormValid = () => {
@@ -73,7 +124,16 @@ export function Cart() {
       text += `• *${item.quantity}x* ${item.name} (${item.selectedOption.label}) ➔ *$${(item.price * item.quantity).toLocaleString('es-AR')}*\n`;
     });
     
-    text += `\n💰 *TOTAL A PAGAR: $${cartTotal.toLocaleString('es-AR')}*\n\n`;
+    if (appliedCoupon && discountAmount > 0) {
+      text += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+      text += `📊 *Subtotal:* $${cartTotal.toLocaleString('es-AR')}\n`;
+      text += `🎟️ *CUPÓN APLICADO:* ${appliedCoupon.code} (${appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.discountValue}% OFF` : `$${appliedCoupon.discountValue.toLocaleString('es-AR')} OFF`})\n`;
+      text += `💸 *DESCUENTO:* -$${discountAmount.toLocaleString('es-AR')}\n`;
+      text += `💰 *TOTAL A PAGAR CON DESCUENTO: $${finalTotal.toLocaleString('es-AR')}*\n\n`;
+    } else {
+      text += `\n💰 *TOTAL A PAGAR: $${cartTotal.toLocaleString('es-AR')}*\n\n`;
+    }
+
     text += `━━━━━━━━━━━━━━━━━━━━\n`;
     
     if (shippingMethod === 'delivery') {
@@ -223,15 +283,122 @@ export function Cart() {
                       )}
                     </div>
 
+                    {/* STEP 1 FOOTER: COUPON & PRICE BREAKDOWN */}
                     {cartItems.length > 0 && (
-                      <div className="p-4 sm:p-5 border-t border-slate-100 bg-white z-10 relative">
-                        <div className="flex justify-between items-end mb-4">
-                          <span className="text-slate-500 text-xs sm:text-sm font-medium">Subtotal ({cartCount} {cartCount === 1 ? 'producto' : 'productos'})</span>
-                          <span className="text-2xl font-black text-slate-900">${cartTotal.toLocaleString('es-AR')}</span>
+                      <div className="p-4 sm:p-5 border-t border-slate-100 bg-white z-10 relative space-y-3.5">
+                        {/* Coupon Box */}
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+                          {appliedCoupon ? (
+                            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="p-1 bg-emerald-600 text-white rounded-lg shrink-0">
+                                  <Ticket className="w-3.5 h-3.5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-black text-xs text-emerald-900 tracking-wider">
+                                      {appliedCoupon.code}
+                                    </span>
+                                    <span className="text-[10px] font-bold bg-emerald-200/70 text-emerald-800 px-1.5 py-0.2 rounded-md">
+                                      {appliedCoupon.badgeText || (appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.discountValue}% OFF` : `$${appliedCoupon.discountValue.toLocaleString('es-AR')}`)}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-emerald-700 truncate mt-0.5">
+                                    {appliedCoupon.description}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={removeCoupon}
+                                className="text-xs font-bold text-red-600 hover:text-red-700 bg-white hover:bg-red-50 px-2.5 py-1 rounded-lg border border-red-200 transition-colors ml-2 shrink-0 cursor-pointer"
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                  <input
+                                    type="text"
+                                    value={couponCodeInput}
+                                    onChange={(e) => {
+                                      setCouponCodeInput(e.target.value.toUpperCase());
+                                      setCouponFeedback(null);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleApplyCoupon();
+                                      }
+                                    }}
+                                    placeholder="Ingresá tu cupón de descuento"
+                                    className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-xs font-bold uppercase tracking-wider text-slate-800 placeholder:normal-case placeholder:font-normal placeholder:text-slate-400 outline-none"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApplyCoupon()}
+                                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer active:scale-95 shadow-sm shadow-blue-500/30 flex items-center gap-1"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <span>Aplicar</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Coupon feedback alert */}
+                          {couponFeedback && (
+                            <div className={`mt-2 p-2 rounded-xl text-[11px] font-medium flex items-center gap-1.5 ${
+                              couponFeedback.type === 'success' 
+                                ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-200' 
+                                : 'bg-rose-100/80 text-rose-800 border border-rose-200'
+                            }`}>
+                              {couponFeedback.type === 'success' ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+                              ) : (
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                              )}
+                              <span>{couponFeedback.message}</span>
+                            </div>
+                          )}
                         </div>
+
+                        {/* Price summary */}
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex justify-between items-center text-xs text-slate-500">
+                            <span>Subtotal ({cartCount} {cartCount === 1 ? 'producto' : 'productos'})</span>
+                            <span className="font-bold text-slate-700">${cartTotal.toLocaleString('es-AR')}</span>
+                          </div>
+
+                          {appliedCoupon && discountAmount > 0 && (
+                            <div className="flex justify-between items-center text-xs font-bold text-emerald-600">
+                              <span className="flex items-center gap-1">
+                                <Ticket className="w-3.5 h-3.5" />
+                                Descuento ({appliedCoupon.code})
+                              </span>
+                              <span>-${discountAmount.toLocaleString('es-AR')}</span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-end pt-1 border-t border-slate-100">
+                            <span className="text-slate-900 text-sm font-black">Total</span>
+                            <div className="text-right">
+                              {appliedCoupon && discountAmount > 0 && (
+                                <span className="text-xs text-slate-400 line-through mr-2 font-medium">
+                                  ${cartTotal.toLocaleString('es-AR')}
+                                </span>
+                              )}
+                              <span className="text-2xl font-black text-slate-900">${finalTotal.toLocaleString('es-AR')}</span>
+                            </div>
+                          </div>
+                        </div>
+
                         <button 
                           onClick={() => setStep('checkout')}
-                          className="flex items-center justify-center gap-2 w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition-all active:scale-98 text-sm sm:text-base"
+                          className="flex items-center justify-center gap-2 w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition-all active:scale-98 text-sm sm:text-base cursor-pointer"
                         >
                           Continuar Pedido <ArrowRight className="w-4 h-4" />
                         </button>
@@ -367,9 +534,26 @@ export function Cart() {
                     </div>
 
                     <div className="p-4 sm:p-5 border-t border-slate-100 bg-white z-10 relative">
+                      {appliedCoupon && discountAmount > 0 && (
+                        <div className="mb-2 p-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs font-bold text-emerald-800">
+                          <span className="flex items-center gap-1.5">
+                            <Ticket className="w-3.5 h-3.5 text-emerald-600" />
+                            Cupón {appliedCoupon.code} aplicado
+                          </span>
+                          <span>-${discountAmount.toLocaleString('es-AR')}</span>
+                        </div>
+                      )}
+
                       <div className="flex justify-between items-center mb-3">
                         <span className="text-xs text-slate-500">Total a Pagar</span>
-                        <span className="text-2xl font-black text-blue-600">${cartTotal.toLocaleString('es-AR')}</span>
+                        <div className="text-right">
+                          {appliedCoupon && discountAmount > 0 && (
+                            <span className="text-xs text-slate-400 line-through mr-2 font-medium">
+                              ${cartTotal.toLocaleString('es-AR')}
+                            </span>
+                          )}
+                          <span className="text-2xl font-black text-blue-600">${finalTotal.toLocaleString('es-AR')}</span>
+                        </div>
                       </div>
 
                       <div className="flex gap-2">

@@ -122,6 +122,44 @@
         }
       },
       "required": ["id", "name", "createdAt"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount coupons for store promotions and inaugural launch",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Coupon promotional code"
+        },
+        "discountType": {
+          "type": "string",
+          "enum": ["percentage", "fixed"],
+          "description": "Type of discount"
+        },
+        "discountValue": {
+          "type": "number",
+          "description": "Discount percentage or fixed amount"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the discount"
+        },
+        "minSpend": {
+          "type": "number",
+          "description": "Minimum spend required to use the coupon"
+        },
+        "appliesTo": {
+          "type": "string",
+          "enum": ["all", "combos"],
+          "description": "Target products or categories"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the coupon is enabled"
+        }
+      },
+      "required": ["code", "discountType", "discountValue", "active"]
     }
   },
   "firestore": {
@@ -140,6 +178,10 @@
     "/restore_points/{pointId}": {
       "schema": "RestorePoint",
       "description": "Saved restore points to roll back store changes"
+    },
+    "/coupons/{couponId}": {
+      "schema": "Coupon",
+      "description": "Discount promo coupons readable by store customers and manageable by admin"
     }
   }
 }

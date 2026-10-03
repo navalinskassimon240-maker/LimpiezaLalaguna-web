@@ -34,3 +34,17 @@ export interface Service {
   description: string;
   iconName: string;
 }
+
+export interface Coupon {
+  id?: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  description: string;
+  minSpend?: number;
+  appliesTo?: 'all' | 'combos';
+  active: boolean;
+  expiresAt?: string;
+  badgeText?: string;
+  updatedAt?: string;
+}
