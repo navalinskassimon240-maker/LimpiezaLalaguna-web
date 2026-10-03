@@ -38,7 +38,7 @@ export const siteConfig = {
   // =======================================================================================
   marca: {
     // Nombre que aparece en la cabecera (dividido en 2 para poder darle colores distintos)
-      nombrePrincipal: "Limpieza",      // Parte 1 (en azul)
+    nombrePrincipal: "Limpieza",      // Parte 1 (en azul)
     nombreResaltado: "Lalaguna",      // Parte 2 (en verde esmeralda)
     
     // Letra o inicial que va dentro del ícono del logo (si no usas imagen)
@@ -59,9 +59,10 @@ export const siteConfig = {
   // =======================================================================================
   whatsapp: {
     // Número al que llegan todos los pedidos y consultas (sin espacios ni guiones)
-    numero: "2241507532", 
+    numero: "5492241507232", 
     
     // Alias de Mercado Pago, CBU o Cuenta Bancaria para transferencias
+    aliasTransferencia: "LIMPIEZALALAGUNA.MP",
     titularCuenta: "Limpieza Lalaguna",
     banco: "Mercado Pago / Transferencia",
   },
@@ -71,10 +72,10 @@ export const siteConfig = {
   // =======================================================================================
   contacto: {
     // Teléfono que se muestra visible en el pie de página
-    telefonoMostrar: "+54 9 2241 507532",
+    telefonoMostrar: "+54 9 2241 50-7232",
     
     // Correo electrónico de contacto
-    email: "...",
+    email: "info@limpiezalalaguna.com",
     
     // Dirección física mostrada en el pie de página
     direccionPiePagina1: "Garay 349",
@@ -91,10 +92,10 @@ export const siteConfig = {
   // 🌐 SECCIÓN 4: REDES SOCIALES
   // =======================================================================================
   redesSociales: {
-    instagram: "https://www.instagram.com/lalaguna_1/",
-    facebook: "https://www.facebook.com/share/1D1tVWxR7J/",
-    tiktok: "https://www.tiktok.com/@pastas.la.laguna",
-    googleMaps: "https://www.google.com/maps/place/La+Laguna+ART+DE+LIMPIEZA/@-35.5719592,-58.0033555,16z/data=!4m6!3m5!1s0x959872a96f7f137b:0x4ac2aaa7bff66a1b!8m2!3d-35.5719592!4d-58.0007806!16s%2Fg%2F11nk0tm3_8?entry=ttu&g_ep=EgoyMDI2MDgxOS4wIKXMDSoASAFQAw%3D%3D",
+    instagram: "https://instagram.com",
+    facebook: "https://facebook.com",
+    tiktok: "https://tiktok.com",
+    googleMaps: "https://maps.google.com",
   },
 
   // =======================================================================================
@@ -164,18 +165,17 @@ export const siteConfig = {
         imageUrl: '/IMG/envios2.png',
         whatsappMessage: '¡Hola! Quisiera realizar un pedido y aprovechar el envío gratis.',
         ctaText: 'Hacer Pedido'
-     },
-     
+      },
       {
         id: 'mayoristas',
-       tag: 'Revendedores', 
-       tagColor: 'bg-blue-600 text-white', 
-       title: '¡Atención Revendedores!',
-       subtitle: 'Cloro a partir de 1000 LTS a un precio único.',
-       imageUrl: '/IMG/novedad4.png', 
-       whatsappMessage: '¡Hola! Quisiera consultar por el precio único de Cloro a partir de 1000 litros para revendedores.',
-       ctaText: 'Consultar Precio'
-     }
+        tag: 'Revendedores',
+        tagColor: 'bg-blue-600 text-white',
+        title: '¡Atención Revendedores!',
+        subtitle: 'Cloro a partir de 1000 LTS a un precio único.',
+        imageUrl: '/IMG/novedad4.png',
+        whatsappMessage: '¡Hola! Quisiera consultar por el precio único de Cloro a partir de 1000 litros para revendedores.',
+        ctaText: 'Consultar Precio'
+      }
     ]
   },
 
@@ -319,59 +319,60 @@ export const siteConfig = {
         isOpen: false,
         shifts: []
       },
-       {
+      {
         dayName: 'Lunes',
         dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:00', close: '13:00' },
-          { open: '16:30', close: '19:30' }
+          { open: '08:30', close: '12:30' },
+          { open: '16:30', close: '20:30' }
         ]
       },
       {
         dayName: 'Martes',
-        dayIndex: 1,
+        dayIndex: 2,
         isOpen: true,
         shifts: [
-          { open: '08:00', close: '13:00' },
-          { open: '16:30', close: '19:30' }
+          { open: '08:30', close: '12:30' },
+          { open: '16:30', close: '20:30' }
         ]
       },
-       {
-        dayName: 'Miercoles',
-        dayIndex: 1,
+      {
+        dayName: 'Miércoles',
+        dayIndex: 3,
         isOpen: true,
         shifts: [
-          { open: '08:00', close: '13:00' },
-          { open: '16:30', close: '19:30' }
+          { open: '08:30', close: '12:30' },
+          { open: '16:30', close: '20:30' }
         ]
       },
       {
         dayName: 'Jueves',
-        dayIndex: 1,
+        dayIndex: 4,
         isOpen: true,
         shifts: [
-          { open: '08:00', close: '13:00' },
-          { open: '16:30', close: '19:30' }
-        ]
-      },
-       {
-        dayName: 'Viernes',
-        dayIndex: 1,
-        isOpen: true,
-        shifts: [
-          { open: '08:00', close: '13:00' },
-          { open: '16:30', close: '19:30' }
+          { open: '08:30', close: '12:30' },
+          { open: '16:30', close: '20:30' }
         ]
       },
       {
-        dayName: 'Sabado',
-        dayIndex: 1,
+        dayName: 'Viernes',
+        dayIndex: 5,
         isOpen: true,
         shifts: [
-          { open: '09:00', close: '13:30' }
+          { open: '08:30', close: '12:30' },
+          { open: '16:30', close: '20:30' }
         ]
       },
+      {
+        dayName: 'Sábado',
+        dayIndex: 6,
+        isOpen: true,
+        shifts: [
+          { open: '09:00', close: '13:00' },
+          { open: '17:00', close: '20:30' }
+        ]
+      }
     ]
   },
 

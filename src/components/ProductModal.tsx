@@ -5,6 +5,7 @@ import { X, ShoppingCart, Star, ShieldCheck, Truck, Package, Droplets, Box, Chec
 import { Product, ProductOption } from '../types';
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
+import { createWhatsAppUrl } from '../utils/whatsapp';
 
 interface ProductModalProps {
   product: Product | null;
@@ -375,7 +376,10 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                     </div>
 
                     <a
-                      href={`https://wa.me/5491122507817?text=Hola%20Limpieza%20La%20Laguna,%20quer%C3%ADa%20consultar%20por%20el%20producto%20"${encodeURIComponent(product.name)}"%20que%20figura%20sin%20stock.`}
+                      href={createWhatsAppUrl(
+                        siteConfig.whatsapp.numero || '5492241507232',
+                        `Hola Limpieza La Laguna, quería consultar por el producto "${product.name}" que figura sin stock.`
+                      )}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/30 active:scale-95"
