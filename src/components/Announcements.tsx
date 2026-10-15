@@ -2,7 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, X, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { siteConfig } from '../data/config';
-import { subscribeAnnouncements, AnnouncementItem } from '../services/storeService';
+import { 
+  subscribeAnnouncements, 
+  AnnouncementItem,
+  subscribeSiteSectionsConfig,
+  getLocalSectionsConfig,
+  SiteSectionsConfig
+} from '../services/storeService';
 
 interface Novedad {
   id: string;
@@ -18,6 +24,7 @@ interface Novedad {
 
 export function Announcements() {
   const [novedades, setNovedades] = useState<Novedad[]>(siteConfig.novedades.lista as Novedad[]);
+  const [siteSections, setSiteSections] = useState<SiteSectionsConfig>(getLocalSectionsConfig());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedNovedad, setSelectedNovedad] = useState<Novedad | null>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -43,7 +50,15 @@ export function Announcements() {
         }
       }
     });
-    return () => unsub();
+
+    const unsubSections = subscribeSiteSectionsConfig((cfg) => {
+      setSiteSections(cfg);
+    });
+
+    return () => {
+      unsub();
+      unsubSections();
+    };
   }, []);
 
   const count = novedades ? novedades.length : 0;
@@ -91,13 +106,13 @@ export function Announcements() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100/80 text-blue-700 text-xs sm:text-sm font-bold uppercase tracking-wider mb-3 shadow-sm">
             <Sparkles className="w-4 h-4 text-blue-600" />
-            <span>{siteConfig.novedades.etiquetaSuperior}</span>
+            <span>{siteSections.novedadesEtiqueta || siteConfig.novedades.etiquetaSuperior}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            {siteConfig.novedades.tituloSeccion}
+            {siteSections.novedadesTitulo || siteConfig.novedades.tituloSeccion}
           </h2>
           <p className="mt-2 text-slate-600 text-sm sm:text-base">
-            {siteConfig.novedades.subtituloSeccion}
+            {siteSections.novedadesSubtitulo || siteConfig.novedades.subtituloSeccion}
           </p>
         </motion.div>
 

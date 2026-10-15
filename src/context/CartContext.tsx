@@ -13,7 +13,7 @@ interface CartContextType {
   clearCart: () => void;
   cartTotal: number;
   cartCount: number;
-  // Cupones y Descuentos
+  // Coupons & Discounts
   availableCoupons: Coupon[];
   appliedCoupon: Coupon | null;
   couponError: string | null;
@@ -28,14 +28,22 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>(initialCoupons);
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>(() => {
+    try {
+      return localStorage.getItem('laguna_coupons_seeded') ? [] : initialCoupons;
+    } catch {
+      return [];
+    }
+  });
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
 
+  // Subscribe to live coupons from Firestore
   useEffect(() => {
     const unsub = subscribeCoupons((coups) => {
       if (coups && Array.isArray(coups)) {
         setAvailableCoupons(coups);
+        // If applied coupon was modified or disabled in DB, update local state
         setAppliedCoupon((prev) => {
           if (!prev) return null;
           const updated = coups.find(c => c.code.toUpperCase() === prev.code.toUpperCase());
@@ -63,7 +71,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const { options, ...productData } = product;
       return [...prev, { ...productData, cartItemId, selectedOption: option, quantity: quantityToAdd, price: option.price }];
     });
-    // Ya NO abre el carrito a la fuerza. El usuario puede seguir agregando productos libremente.
+    // Do not force open cart drawer automatically, allowing user to keep shopping
   };
 
   const removeFromCart = (cartItemId: string) => {
@@ -89,42 +97,88 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const cartTotal = useMemo(() => {
-    return cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   }, [cartItems]);
 
   const cartCount = useMemo(() => {
-    return cartItems.reduce((acc, item) => acc + item.quantity, 0);
+    return cartItems.reduce((count, item) => count + item.quantity, 0);
   }, [cartItems]);
 
-  const applyCoupon = (code: string): { success: boolean; message: string } => {
-    setCouponError(null);
-    if (!code || !code.trim()) {
-      setCouponError('Ingresá un código');
-      return { success: false, message: 'Ingresá un código' };
+  // Discount Calculation logic
+  const discountAmount = useMemo(() => {
+    if (!appliedCoupon || cartTotal === 0) return 0;
+
+    // Check minimum spend constraint
+    if (appliedCoupon.minSpend && cartTotal < appliedCoupon.minSpend) {
+      return 0;
     }
 
+    if (appliedCoupon.appliesTo === 'combos') {
+      // Calculate only on combos
+      const comboTotal = cartItems
+        .filter(item => item.category === 'Combos y Promos' || (item.includes && item.includes.length > 0))
+        .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      if (comboTotal === 0) return 0;
+
+      if (appliedCoupon.discountType === 'percentage') {
+        return Math.round((comboTotal * appliedCoupon.discountValue) / 100);
+      } else {
+        return Math.min(appliedCoupon.discountValue, comboTotal);
+      }
+    }
+
+    // Applies to all products
+    if (appliedCoupon.discountType === 'percentage') {
+      return Math.round((cartTotal * appliedCoupon.discountValue) / 100);
+    } else {
+      return Math.min(appliedCoupon.discountValue, cartTotal);
+    }
+  }, [appliedCoupon, cartTotal, cartItems]);
+
+  const finalTotal = Math.max(0, cartTotal - discountAmount);
+
+  const applyCoupon = (code: string): { success: boolean; message: string } => {
     const cleanCode = code.trim().toUpperCase();
+    setCouponError(null);
+
+    if (!cleanCode) {
+      const msg = 'Ingresá un código de cupón';
+      setCouponError(msg);
+      return { success: false, message: msg };
+    }
+
     const found = availableCoupons.find(c => c.code.toUpperCase() === cleanCode);
 
     if (!found) {
-      const msg = 'Cupón inexistente o inválido';
+      const msg = `El cupón "${cleanCode}" no es válido o no existe`;
       setCouponError(msg);
       return { success: false, message: msg };
     }
 
     if (!found.active) {
-      const msg = 'Este cupón se encuentra inactivo';
+      const msg = `El cupón "${cleanCode}" se encuentra pausado o vencido`;
       setCouponError(msg);
       return { success: false, message: msg };
     }
 
-    if (found.minPurchase && cartTotal < found.minPurchase) {
-      const msg = `Mínimo de compra requerido: $${found.minPurchase.toLocaleString('es-AR')}`;
+    if (found.minSpend && cartTotal < found.minSpend) {
+      const msg = `El cupón ${found.code} requiere una compra mínima de $${found.minSpend.toLocaleString('es-AR')} (tu carrito tiene $${cartTotal.toLocaleString('es-AR')})`;
       setCouponError(msg);
       return { success: false, message: msg };
+    }
+
+    if (found.appliesTo === 'combos') {
+      const hasCombo = cartItems.some(item => item.category === 'Combos y Promos' || (item.includes && item.includes.length > 0));
+      if (!hasCombo) {
+        const msg = `El cupón ${found.code} es exclusivo para Combos y Promos. ¡Agregá un combo para aplicarlo!`;
+        setCouponError(msg);
+        return { success: false, message: msg };
+      }
     }
 
     setAppliedCoupon(found);
+    setCouponError(null);
     return { success: true, message: `¡Cupón ${found.code} aplicado con éxito!` };
   };
 
@@ -132,23 +186,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setAppliedCoupon(null);
     setCouponError(null);
   };
-
-  const discountAmount = useMemo(() => {
-    if (!appliedCoupon) return 0;
-    if (appliedCoupon.minPurchase && cartTotal < appliedCoupon.minPurchase) {
-      return 0;
-    }
-
-    if (appliedCoupon.type === 'percentage') {
-      return Math.round((cartTotal * appliedCoupon.value) / 100);
-    } else {
-      return Math.min(appliedCoupon.value, cartTotal);
-    }
-  }, [appliedCoupon, cartTotal]);
-
-  const finalTotal = useMemo(() => {
-    return Math.max(0, cartTotal - discountAmount);
-  }, [cartTotal, discountAmount]);
 
   return (
     <CartContext.Provider value={{
@@ -176,7 +213,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
 export function useCart() {
   const context = useContext(CartContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;

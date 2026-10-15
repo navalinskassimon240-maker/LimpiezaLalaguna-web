@@ -8,11 +8,17 @@ import { triggerFlyToCart } from './FlyToCart';
 import { Product } from '../types';
 import { siteConfig } from '../data/config';
 import { products as initialProducts } from '../data/products';
-import { subscribeProducts } from '../services/storeService';
+import { 
+  subscribeProducts, 
+  subscribeSiteSectionsConfig, 
+  getLocalSectionsConfig, 
+  SiteSectionsConfig 
+} from '../services/storeService';
 
 export function Products() {
   const { addToCart } = useCart();
   const [productList, setProductList] = useState<Product[]>(initialProducts);
+  const [siteSections, setSiteSections] = useState<SiteSectionsConfig>(getLocalSectionsConfig());
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -46,12 +52,18 @@ export function Products() {
   };
 
   useEffect(() => {
-    const unsub = subscribeProducts((liveProducts) => {
+    const unsubProds = subscribeProducts((liveProducts) => {
       if (liveProducts && Array.isArray(liveProducts)) {
         setProductList(liveProducts.filter(Boolean));
       }
     });
-    return () => unsub();
+    const unsubSections = subscribeSiteSectionsConfig((cfg) => {
+      setSiteSections(cfg);
+    });
+    return () => {
+      unsubProds();
+      unsubSections();
+    };
   }, []);
 
   const categories = useMemo(() => {
@@ -123,9 +135,11 @@ export function Products() {
           <div className="inline-flex items-center justify-center p-3 bg-blue-100 rounded-full mb-4 shadow-inner">
             <ShoppingBag className="h-6 w-6 text-blue-700" />
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 drop-shadow-sm">{siteConfig.catalogo.titulo}</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 drop-shadow-sm">
+            {siteSections.catalogoTitulo || siteConfig.catalogo.titulo}
+          </h2>
           <p className="text-lg text-slate-600 mb-6">
-            {siteConfig.catalogo.descripcion}
+            {siteSections.catalogoDescripcion || siteConfig.catalogo.descripcion}
           </p>
 
           {/* Search bar */}

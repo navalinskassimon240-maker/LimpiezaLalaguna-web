@@ -1,8 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { siteConfig } from '../data/config';
+import { 
+  subscribeSiteSectionsConfig, 
+  getLocalSectionsConfig, 
+  SiteSectionsConfig 
+} from '../services/storeService';
 
 export function Services() {
+  const [siteSections, setSiteSections] = useState<SiteSectionsConfig>(getLocalSectionsConfig());
+
+  useEffect(() => {
+    const unsub = subscribeSiteSectionsConfig(setSiteSections);
+    return () => unsub();
+  }, []);
+
   return (
     <section id="servicios" className="py-24 bg-transparent relative z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -14,9 +26,11 @@ export function Services() {
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="text-center max-w-3xl mx-auto mb-16"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 drop-shadow-sm">{siteConfig.servicios.titulo}</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 drop-shadow-sm">
+            {siteSections.serviciosTitulo || siteConfig.servicios.titulo}
+          </h2>
           <p className="text-lg text-slate-600">
-            {siteConfig.servicios.descripcion}
+            {siteSections.serviciosDescripcion || siteConfig.servicios.descripcion}
           </p>
         </motion.div>
 

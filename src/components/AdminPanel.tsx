@@ -52,6 +52,7 @@ import {
   subscribeCoupons,
   saveCoupon,
   deleteCoupon,
+  deleteAllCoupons,
   toggleCouponStatus,
   restoreInitialCoupons,
   verifyAdminPin, 
@@ -60,7 +61,23 @@ import {
   acknowledgeProductChanges,
   acknowledgeAllProductChanges,
   toggleProductStock,
-  AnnouncementItem 
+  AnnouncementItem,
+  defaultCatalogCategories,
+  subscribeCategories,
+  saveCategories,
+  renameCategory,
+  deleteCategory,
+  subscribeSiteSectionsConfig,
+  saveSiteSectionsConfig,
+  resetSiteSectionsConfig,
+  getLocalSectionsConfig,
+  SiteSectionsConfig,
+  subscribeDeletedFactoryProducts,
+  dismissDeletedFactoryProduct,
+  dismissAllDeletedFactoryProducts,
+  subscribeFactoryExpirationDays,
+  saveFactoryExpirationDays,
+  DeletedFactoryProductEntry
 } from '../services/storeService';
 import { compressImageFile } from '../utils/imageCompressor';
 import { useDevice } from '../utils/useDevice';
@@ -114,8 +131,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   // Store data - initialize with initialProducts so it is NEVER empty
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
-  const [coupons, setCoupons] = useState<Coupon[]>(initialCoupons);
-  const [activeTab, setActiveTab] = useState<'products' | 'changes' | 'announcements' | 'coupons' | 'settings'>('products');
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [activeTab, setActiveTab] = useState<'products' | 'changes' | 'announcements' | 'coupons' | 'sections' | 'settings'>('products');
+
+  // Categories & Sections state
+  const [categoriesList, setCategoriesList] = useState<string[]>(defaultCatalogCategories);
+  const [siteSections, setSiteSections] = useState<SiteSectionsConfig>(getLocalSectionsConfig());
+  const [sectionsForm, setSectionsForm] = useState<SiteSectionsConfig>(getLocalSectionsConfig());
+  const [isRenamingCategoryModalOpen, setIsRenamingCategoryModalOpen] = useState(false);
+  const [categoryToRename, setCategoryToRename] = useState<string>('');
+  const [newCategoryNameInput, setNewCategoryNameInput] = useState<string>('');
+  const [newCategoryInput, setNewCategoryInput] = useState<string>('');
+
+  // Deleted factory products & expiration (3 or 5 days)
+  const [deletedFactoryMap, setDeletedFactoryMap] = useState<Record<string, DeletedFactoryProductEntry>>({});
+  const [factoryExpirationDays, setFactoryExpirationDays] = useState<number>(3);
 
   // Filter state for Products tab
   const [productStatusFilter, setProductStatusFilter] = useState<'all' | 'in_stock' | 'out_of_stock' | 'modified' | 'new'>('all');
@@ -235,10 +265,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       setCoupons(list.filter(Boolean));
     });
 
+    const unsubCategories = subscribeCategories((cats) => {
+      setCategoriesList(cats);
+    });
+
+    const unsubSections = subscribeSiteSectionsConfig((cfg) => {
+      setSiteSections(cfg);
+      setSectionsForm(cfg);
+    });
+
+    const unsubDeletedFactory = subscribeDeletedFactoryProducts((data) => {
+      setDeletedFactoryMap(data || {});
+    });
+
+    const unsubExpirationDays = subscribeFactoryExpirationDays((days) => {
+      setFactoryExpirationDays(days);
+    });
+
     return () => {
       unsubProducts();
       unsubAnnouncements();
       unsubCoupons();
+      unsubCategories();
+      unsubSections();
+      unsubDeletedFactory();
+      unsubExpirationDays();
     };
   }, [isAuthenticated]);
 
@@ -376,8 +427,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   }, [productDiffsMap]);
 
   const deletedOriginalProducts = useMemo(() => {
-    return initialProducts.filter((initial) => !products.some((p) => p.id === initial.id));
-  }, [products]);
+    const missing = initialProducts.filter((initial) => !products.some((p) => p.id === initial.id));
+    const now = Date.now();
+
+    return missing.filter((initial) => {
+      const entry = deletedFactoryMap[initial.id];
+      // If user dismissed it permanently, hide it immediately
+      if (entry?.dismissed) return false;
+
+      // If recorded deletion date, check against expiration window (3 or 5 days)
+      if (entry?.deletedAt) {
+        const daysPassed = (now - new Date(entry.deletedAt).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysPassed >= factoryExpirationDays) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [products, deletedFactoryMap, factoryExpirationDays]);
 
   const inStockCount = useMemo(() => {
     return products.filter((p) => !p.outOfStock).length;
@@ -940,6 +1007,173 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
     showToast(`📋 ¡Código "${code}" copiado al portapapeles!`);
   };
 
+  const handleDeleteAllCoupons = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar TODOS los cupones?',
+      description: 'Se eliminarán todos los códigos de descuento de la tienda. El carrito quedará sin cupones activos hasta que crees uno nuevo o decidas restaurarlos. ¡No se volverán a activar automáticamente!',
+      confirmButtonText: 'Sí, Eliminar Todos los Cupones',
+      confirmButtonVariant: 'danger',
+      requireSafetyCheck: false,
+      onConfirm: async () => {
+        setIsProcessing(true);
+        try {
+          await deleteAllCoupons();
+          showToast('🗑️ Todos los cupones fueron eliminados.');
+        } catch (err: any) {
+          alert('Error al vaciar cupones: ' + (err?.message || ''));
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    });
+  };
+
+  // Factory Deleted Products handlers (disappear after 3 or 5 days, or dismiss manually)
+  const handleDismissDeletedFactoryProduct = async (productId: string) => {
+    try {
+      await dismissDeletedFactoryProduct(productId);
+      showToast('🗑️ Producto quitado de la lista de restauración.');
+    } catch (err: any) {
+      alert('Error al descartar: ' + (err?.message || ''));
+    }
+  };
+
+  const handleDismissAllDeletedFactoryProducts = () => {
+    const ids = deletedOriginalProducts.map(p => p.id);
+    if (ids.length === 0) return;
+
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Descartar todos los productos eliminados?',
+      description: 'Esta lista de productos de fábrica ya no se mostrará para restaurar.',
+      confirmButtonText: 'Sí, Descartar Todos',
+      confirmButtonVariant: 'danger',
+      requireSafetyCheck: false,
+      onConfirm: async () => {
+        setIsProcessing(true);
+        try {
+          await dismissAllDeletedFactoryProducts(ids);
+          showToast('🧹 Todos los productos eliminados fueron descartados.');
+        } catch (err: any) {
+          alert('Error al descartar: ' + (err?.message || ''));
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    });
+  };
+
+  const handleToggleFactoryExpirationDays = async (newDays: number) => {
+    setFactoryExpirationDays(newDays);
+    await saveFactoryExpirationDays(newDays);
+    showToast(`⏱️ Los productos de fábrica eliminados desaparecerán tras ${newDays} días.`);
+  };
+
+  // Category & Section handlers
+  const handleAddNewCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCategoryInput.trim();
+    if (!trimmed) return;
+
+    if (categoriesList.includes(trimmed)) {
+      alert('Esa sección / categoría ya existe.');
+      return;
+    }
+
+    const updated = [...categoriesList, trimmed];
+    setIsProcessing(true);
+    try {
+      await saveCategories(updated);
+      setNewCategoryInput('');
+      showToast(`📁 Sección "${trimmed}" agregada con éxito.`);
+    } catch (err: any) {
+      alert('Error al agregar categoría: ' + (err?.message || ''));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleOpenRenameCategoryModal = (cat: string) => {
+    setCategoryToRename(cat);
+    setNewCategoryNameInput(cat);
+    setIsRenamingCategoryModalOpen(true);
+  };
+
+  const handleConfirmRenameCategory = async () => {
+    const oldName = categoryToRename.trim();
+    const newName = newCategoryNameInput.trim();
+    if (!oldName || !newName || oldName === newName) {
+      setIsRenamingCategoryModalOpen(false);
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const updatedCount = await renameCategory(oldName, newName);
+      setIsRenamingCategoryModalOpen(false);
+      showToast(`✅ Sección renombrada a "${newName}" (${updatedCount} productos actualizados).`);
+    } catch (err: any) {
+      alert('Error al renombrar categoría: ' + (err?.message || ''));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteEmptyCategory = async (cat: string) => {
+    const count = products.filter(p => p.category === cat).length;
+    if (count > 0) {
+      alert(`No podés eliminar "${cat}" porque todavía tiene ${count} productos. Cambiá la categoría de esos productos antes de borrarla.`);
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await deleteCategory(cat);
+      showToast(`🗑️ Sección "${cat}" eliminada.`);
+    } catch (err: any) {
+      alert('Error al eliminar categoría: ' + (err?.message || ''));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSaveSectionTitles = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    try {
+      await saveSiteSectionsConfig(sectionsForm);
+      showToast('🎉 ¡Nombres y títulos de secciones guardados en la web!');
+    } catch (err: any) {
+      alert('Error al guardar títulos: ' + (err?.message || ''));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleResetSectionTitles = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Restablecer títulos originales?',
+      description: 'Se volverán a usar los nombres y descripciones predeterminados de fábrica para las secciones de la tienda.',
+      confirmButtonText: 'Sí, Restablecer',
+      confirmButtonVariant: 'primary',
+      requireSafetyCheck: false,
+      onConfirm: async () => {
+        setIsProcessing(true);
+        try {
+          await resetSiteSectionsConfig();
+          setSectionsForm({});
+          showToast('🔄 Títulos originales restablecidos.');
+        } catch (err: any) {
+          alert('Error al restablecer: ' + (err?.message || ''));
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    });
+  };
+
   // Change PIN handler
   const handleChangePin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -961,8 +1195,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
     }
   };
 
-  // Categories list derived from products
-  const categories = ['all', ...Array.from(new Set(products.map((p) => p.category || 'Otros')))];
+  // Categories list derived from configured categories + products
+  const categories = useMemo(() => {
+    const fromProds = products.map((p) => p.category || 'Otros');
+    return ['all', ...Array.from(new Set([...categoriesList, ...fromProds]))];
+  }, [categoriesList, products]);
 
   // Filtered products for products tab
   const filteredProducts = products.filter((p) => {
@@ -1228,6 +1465,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
           >
             <Ticket className="w-4 h-4 text-emerald-500" />
             <span>Cupones ({coupons.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('sections')}
+            className={`px-4 py-2 rounded-xl font-black text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'sections'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-indigo-500" />
+            <span>Secciones & Categorías</span>
           </button>
 
           <button
@@ -1853,49 +2102,135 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
               )}
             </div>
 
-            {/* Section 3: Deleted Factory Products (If any) */}
-            {deletedOriginalProducts.length > 0 && (
-              <div className="space-y-4 pt-4">
-                <div className="flex items-center justify-between">
+            {/* Section 3: Deleted Factory Products (Disappear after 3 or 5 days) */}
+            <div className="space-y-4 pt-4 border-t border-slate-200/80">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
                   <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                     <History className="w-5 h-5 text-slate-500" />
-                    <span>Productos de Fábrica que Fueron Eliminados ({deletedOriginalProducts.length})</span>
+                    <span>Productos de Fábrica Eliminados ({deletedOriginalProducts.length})</span>
                   </h3>
-                  <span className="text-xs text-slate-500">
-                    Podés restaurarlos individualmente si los necesitás
-                  </span>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Se mantienen disponibles para restaurar durante {factoryExpirationDays} días y luego desaparecen automáticamente.
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {deletedOriginalProducts.map((prod) => (
-                    <div 
-                      key={prod.id}
-                      className="bg-slate-50 rounded-3xl p-4 border border-slate-200 flex items-center justify-between gap-3"
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Expiration toggle (3 or 5 days) */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
+                    <span className="px-2 text-[11px] text-slate-500">Expirar en:</span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFactoryExpirationDays(3)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        factoryExpirationDays === 3 
+                          ? 'bg-blue-600 text-white shadow-xs' 
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
                     >
-                      <div className="min-w-0">
-                        <span className="text-[10px] font-bold uppercase text-slate-400">
-                          {prod.category}
-                        </span>
-                        <h4 className="font-bold text-slate-700 text-xs truncate">
-                          {prod.name}
-                        </h4>
-                        <span className="text-xs font-bold text-slate-500 block">
-                          ${prod.basePrice.toLocaleString('es-AR')}
-                        </span>
-                      </div>
+                      3 días
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFactoryExpirationDays(5)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        factoryExpirationDays === 5 
+                          ? 'bg-blue-600 text-white shadow-xs' 
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      5 días
+                    </button>
+                  </div>
 
-                      <button
-                        onClick={() => handleRestoreDeletedFactoryProduct(prod)}
-                        className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer shadow-sm"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Restaurar</span>
-                      </button>
-                    </div>
-                  ))}
+                  {deletedOriginalProducts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleDismissAllDeletedFactoryProducts}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Quitar todos los productos eliminados de la lista de restauración"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      <span>Descartar Todos</span>
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
+
+              {deletedOriginalProducts.length === 0 ? (
+                <div className="bg-slate-50 rounded-3xl p-6 text-center border border-slate-200">
+                  <CheckCircle2 className="w-7 h-7 text-emerald-500 mx-auto mb-1.5 opacity-80" />
+                  <p className="text-xs text-slate-600 font-bold">
+                    No hay productos de fábrica eliminados pendientes de restaurar.
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Todos los productos eliminados han expirado o fueron descartados.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {deletedOriginalProducts.map((prod) => {
+                    const entry = deletedFactoryMap[prod.id];
+                    const daysPassed = entry?.deletedAt 
+                      ? Math.floor((Date.now() - new Date(entry.deletedAt).getTime()) / (1000 * 60 * 60 * 24))
+                      : 0;
+                    const daysLeft = Math.max(1, factoryExpirationDays - daysPassed);
+
+                    return (
+                      <div 
+                        key={prod.id}
+                        className="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between gap-3 hover:border-slate-300 transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-bold uppercase text-slate-400 block truncate">
+                              {prod.category}
+                            </span>
+                            <h4 className="font-bold text-slate-800 text-xs truncate mt-0.5">
+                              {prod.name}
+                            </h4>
+                            <span className="text-xs font-bold text-slate-600 block mt-0.5">
+                              ${prod.basePrice.toLocaleString('es-AR')}
+                            </span>
+                          </div>
+
+                          <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold shrink-0 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            <span>Quedan {daysLeft} {daysLeft === 1 ? 'd' : 'd'}</span>
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            Se quitará solo al expirar
+                          </span>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleDismissDeletedFactoryProduct(prod.id)}
+                              className="p-1.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl text-xs transition-colors cursor-pointer"
+                              title="Descartar de la lista de restauración inmediatamente"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRestoreDeletedFactoryProduct(prod)}
+                              className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer shadow-sm"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Restaurar</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
           </div>
         )}
@@ -2008,6 +2343,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
+                {coupons.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAllCoupons}
+                    className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200/80 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Eliminar todos los cupones activos de la tienda"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                    <span>Vaciar Todos ({coupons.length})</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={handleRestoreCoupons}
@@ -2029,101 +2376,345 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
               </div>
             </div>
 
-            {/* Coupons List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {coupons.map((coup) => (
-                <div
-                  key={coup.code}
-                  className={`bg-white rounded-3xl border p-5 shadow-sm transition-all flex flex-col justify-between ${
-                    coup.active ? 'border-slate-200' : 'border-slate-200 bg-slate-50/60 opacity-75'
-                  }`}
-                >
-                  <div>
-                    {/* Top Row: Badge & Status */}
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-black uppercase tracking-wider">
-                        {coup.badgeText || (coup.discountType === 'percentage' ? `${coup.discountValue}% OFF` : `$${coup.discountValue.toLocaleString('es-AR')} OFF`)}
-                      </span>
+            {/* Coupons List or Empty State */}
+            {coupons.length === 0 ? (
+              <div className="bg-white rounded-3xl p-10 text-center border border-slate-200 shadow-sm max-w-lg mx-auto">
+                <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                  <Ticket className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-black text-slate-800">No hay cupones creados en este momento</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
+                  Podés crear cupones personalizados cuando quieras para tus clientes, o restaurar los de fábrica. Si dejás la lista vacía, se mantendrá vacía sin reiniciarse automáticamente.
+                </p>
+                <div className="flex items-center justify-center gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateCoupon}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Crear Primer Cupón</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRestoreCoupons}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Restaurar 5 Cupones</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {coupons.map((coup) => (
+                  <div
+                    key={coup.code}
+                    className={`bg-white rounded-3xl border p-5 shadow-sm transition-all flex flex-col justify-between ${
+                      coup.active ? 'border-slate-200' : 'border-slate-200 bg-slate-50/60 opacity-75'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Row: Badge & Status */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-full text-[11px] font-black uppercase tracking-wider">
+                          {coup.badgeText || (coup.discountType === 'percentage' ? `${coup.discountValue}% OFF` : `$${coup.discountValue.toLocaleString('es-AR')} OFF`)}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCoupon(coup)}
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors flex items-center gap-1 cursor-pointer ${
+                            coup.active 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                              : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${coup.active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                          <span>{coup.active ? 'Activo' : 'Pausado'}</span>
+                        </button>
+                      </div>
+
+                      {/* Code & Copy button */}
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200 mb-3">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase text-slate-400 block">Código</span>
+                          <span className="text-lg font-black text-blue-700 tracking-wider font-mono">
+                            {coup.code}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyCouponCode(coup.code)}
+                          className="p-2 bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                          title="Copiar código para enviar por WhatsApp o redes"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-xs text-slate-700 font-medium mb-3 leading-relaxed">
+                        {coup.description}
+                      </p>
+
+                      {/* Conditions */}
+                      <div className="space-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
+                        <div className="flex justify-between">
+                          <span>Compra mínima:</span>
+                          <strong className="text-slate-700">
+                            {coup.minSpend && coup.minSpend > 0 ? `$${coup.minSpend.toLocaleString('es-AR')}` : 'Sin mínimo ($0)'}
+                          </strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Aplica en:</span>
+                          <strong className="text-slate-700">
+                            {coup.appliesTo === 'combos' ? '🔥 Solo Combos y Promos' : '✨ Toda la Tienda'}
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions Footer */}
+                    <div className="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditCoupon(coup)}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Editar</span>
+                      </button>
 
                       <button
                         type="button"
-                        onClick={() => handleToggleCoupon(coup)}
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors flex items-center gap-1 cursor-pointer ${
-                          coup.active 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                            : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
-                        }`}
+                        onClick={() => handleDeleteCoupon(coup)}
+                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${coup.active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-                        <span>{coup.active ? 'Activo' : 'Pausado'}</span>
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Eliminar</span>
                       </button>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-                    {/* Code & Copy button */}
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200 mb-3">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Código</span>
-                        <span className="text-lg font-black text-blue-700 tracking-wider font-mono">
-                          {coup.code}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* TAB: SECTIONS & CATEGORIES MANAGEMENT                         */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === 'sections' && (
+          <div className="space-y-8">
+            {/* Part 1: Categorías / Secciones del Catálogo de Productos */}
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900">Secciones y Categorías de Productos</h2>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Cambiá el nombre de cualquier sección del catálogo. Al renombrar una sección, todos los productos que pertenezcan a ella se actualizarán automáticamente.
+                  </p>
+                </div>
+
+                {/* Add new category form */}
+                <form onSubmit={handleAddNewCategory} className="flex items-center gap-2 w-full sm:w-auto">
+                  <input
+                    type="text"
+                    placeholder="Nueva sección..."
+                    value={newCategoryInput}
+                    onChange={(e) => setNewCategoryInput(e.target.value)}
+                    className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-indigo-600 focus:bg-white"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newCategoryInput.trim() || isProcessing}
+                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Agregar</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* Categories grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {categoriesList.map((cat) => {
+                  const productCount = products.filter(p => p.category === cat).length;
+                  return (
+                    <div
+                      key={cat}
+                      className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-3 hover:border-indigo-300 transition-all"
+                    >
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-slate-900 text-sm truncate">{cat}</h4>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {productCount} {productCount === 1 ? 'producto' : 'productos'}
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleCopyCouponCode(coup.code)}
-                        className="p-2 bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
-                        title="Copiar código para enviar por WhatsApp o redes"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                    </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenRenameCategoryModal(cat)}
+                          className="px-2.5 py-1.5 bg-white hover:bg-indigo-50 text-indigo-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+                          title="Cambiar nombre de esta sección"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Renombrar</span>
+                        </button>
 
-                    {/* Description */}
-                    <p className="text-xs text-slate-700 font-medium mb-3 leading-relaxed">
-                      {coup.description}
-                    </p>
-
-                    {/* Conditions */}
-                    <div className="space-y-1 text-[11px] text-slate-500 border-t border-slate-100 pt-2.5">
-                      <div className="flex justify-between">
-                        <span>Compra mínima:</span>
-                        <strong className="text-slate-700">
-                          {coup.minSpend && coup.minSpend > 0 ? `$${coup.minSpend.toLocaleString('es-AR')}` : 'Sin mínimo ($0)'}
-                        </strong>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Aplica en:</span>
-                        <strong className="text-slate-700">
-                          {coup.appliesTo === 'combos' ? '🔥 Solo Combos y Promos' : '✨ Toda la Tienda'}
-                        </strong>
+                        {productCount === 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEmptyCategory(cat)}
+                            className="p-1.5 bg-white hover:bg-red-50 text-red-600 border border-slate-200 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
+                            title="Eliminar sección vacía"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
-                  </div>
-
-                  {/* Actions Footer */}
-                  <div className="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditCoupon(coup)}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Editar</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCoupon(coup)}
-                      className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Eliminar</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
             </div>
 
+            {/* Part 2: Títulos y Textos de Secciones de la Tienda */}
+            <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-100 text-blue-700 rounded-xl">
+                      <SlidersHorizontal className="w-5 h-5" />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900">Nombres y Títulos de Secciones en la Web</h2>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Personalizá los títulos y subtítulos que se muestran en la página principal para cada bloque.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleResetSectionTitles}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Restablecer Originales</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveSectionTitles} className="space-y-5">
+                {/* Sección Novedades */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <h3 className="text-xs font-black uppercase text-blue-700 flex items-center gap-1.5">
+                    <Megaphone className="w-4 h-4" />
+                    <span>Sección Novedades y Ofertas</span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Título de la Sección</label>
+                      <input
+                        type="text"
+                        value={sectionsForm.novedadesTitulo ?? ''}
+                        onChange={(e) => setSectionsForm(prev => ({ ...prev, novedadesTitulo: e.target.value }))}
+                        placeholder="Ej: Novedades"
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-blue-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Subtítulo Descriptivo</label>
+                      <input
+                        type="text"
+                        value={sectionsForm.novedadesSubtitulo ?? ''}
+                        onChange={(e) => setSectionsForm(prev => ({ ...prev, novedadesSubtitulo: e.target.value }))}
+                        placeholder="Enterate de las últimas promociones..."
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 outline-none focus:border-blue-600"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección Catálogo */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <h3 className="text-xs font-black uppercase text-emerald-700 flex items-center gap-1.5">
+                    <Package className="w-4 h-4" />
+                    <span>Sección Catálogo de Productos</span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Título del Catálogo</label>
+                      <input
+                        type="text"
+                        value={sectionsForm.catalogoTitulo ?? ''}
+                        onChange={(e) => setSectionsForm(prev => ({ ...prev, catalogoTitulo: e.target.value }))}
+                        placeholder="Ej: Catálogo de Productos"
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-emerald-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Descripción del Catálogo</label>
+                      <input
+                        type="text"
+                        value={sectionsForm.catalogoDescripcion ?? ''}
+                        onChange={(e) => setSectionsForm(prev => ({ ...prev, catalogoDescripcion: e.target.value }))}
+                        placeholder="Descubre nuestra amplia variedad..."
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 outline-none focus:border-emerald-600"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección Servicios */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <h3 className="text-xs font-black uppercase text-purple-700 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Sección Servicios</span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Título de Servicios</label>
+                      <input
+                        type="text"
+                        value={sectionsForm.serviciosTitulo ?? ''}
+                        onChange={(e) => setSectionsForm(prev => ({ ...prev, serviciosTitulo: e.target.value }))}
+                        placeholder="Ej: Nuestros Servicios"
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-purple-600"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-slate-600 mb-1">Descripción de Servicios</label>
+                      <input
+                        type="text"
+                        value={sectionsForm.serviciosDescripcion ?? ''}
+                        onChange={(e) => setSectionsForm(prev => ({ ...prev, serviciosDescripcion: e.target.value }))}
+                        placeholder="En LimpiezaLalaguna nos adaptamos..."
+                        className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 outline-none focus:border-purple-600"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botón de Guardar */}
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-2xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isProcessing ? 'Guardando...' : 'Guardar Nombres de Secciones'}</span>
+                </button>
+              </form>
+            </div>
           </div>
         )}
 
@@ -2272,19 +2863,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
                       Categoría
                     </label>
                     <select
-                      value={productForm.category || 'Productos de Limpieza'}
+                      value={productForm.category || categoriesList[0] || 'Productos de Limpieza'}
                       onChange={(e) => setProductForm((prev) => ({ ...prev, category: e.target.value }))}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-all"
                     >
-                      <option value="Productos de Limpieza">Productos de Limpieza</option>
-                      <option value="Combos y Promos">Combos y Promos</option>
-                      <option value="Escobillón y Mopas">Escobillón y Mopas</option>
-                      <option value="Papel">Papel</option>
-                      <option value="Bolsas">Bolsas</option>
-                      <option value="Aromatizadores">Aromatizadores</option>
-                      <option value="Control de Plagas">Control de Plagas</option>
-                      <option value="Bazar y Decoración">Bazar y Decoración</option>
-                      <option value="Otros">Otros</option>
+                      {categoriesList.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                      {productForm.category && !categoriesList.includes(productForm.category) && (
+                        <option value={productForm.category}>{productForm.category}</option>
+                      )}
                     </select>
                   </div>
 
@@ -3137,6 +3725,61 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Renombrar Sección / Categoría */}
+      {isRenamingCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-slate-900">Renombrar Sección / Categoría</h3>
+              <button
+                type="button"
+                onClick={() => setIsRenamingCategoryModalOpen(false)}
+                className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Vas a cambiar el nombre de la sección <strong className="text-blue-700">"{categoryToRename}"</strong>. 
+              Todos los productos que pertenecen a esta categoría se actualizarán con el nuevo nombre automáticamente.
+            </p>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                Nuevo Nombre de la Sección
+              </label>
+              <input
+                type="text"
+                autoFocus
+                value={newCategoryNameInput}
+                onChange={(e) => setNewCategoryNameInput(e.target.value)}
+                placeholder="Escribí el nuevo nombre..."
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:border-blue-600 focus:bg-white"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsRenamingCategoryModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!newCategoryNameInput.trim() || newCategoryNameInput.trim() === categoryToRename || isProcessing}
+                onClick={handleConfirmRenameCategory}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black cursor-pointer shadow-md disabled:opacity-50"
+              >
+                {isProcessing ? 'Actualizando...' : 'Guardar y Actualizar'}
+              </button>
+            </div>
           </div>
         </div>
       )}

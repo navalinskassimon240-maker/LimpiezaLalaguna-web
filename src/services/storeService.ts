@@ -212,11 +212,13 @@ export async function toggleProductStock(productId: string, outOfStock: boolean)
 }
 
 /**
- * Deletes a product from Firestore.
+ * Deletes a product from Firestore and registers factory deletion timestamp if it's an initial product.
  */
 export async function deleteProduct(productId: string): Promise<void> {
   const productDoc = doc(db, PRODUCTS_COLLECTION, productId);
   await deleteDoc(productDoc);
+  // If it's a factory initial product, record deletion date so it expires after 3 or 5 days
+  await recordFactoryProductDeletion(productId).catch(() => {});
 }
 
 /**
@@ -330,10 +332,46 @@ export async function deleteAnnouncement(id: string): Promise<void> {
 
 // Flag for coupon seeding
 let isSeedingCoupons = false;
+const COUPONS_STATE_DOC = 'coupons_state';
+const DELETED_FACTORY_DOC = 'deleted_factory_products';
+const CATEGORIES_DOC = 'categories';
+const SECTIONS_CONFIG_DOC = 'sections_config';
+
+export const defaultCatalogCategories = [
+  'Combos y Promos',
+  'Productos de Limpieza',
+  'Escobillón y Mopas',
+  'Papel',
+  'Bolsas',
+  'Aromatizadores',
+  'Control de Plagas',
+  'Bazar y Decoración',
+  'Otros'
+];
+
+export interface SiteSectionsConfig {
+  novedadesTitulo?: string;
+  novedadesSubtitulo?: string;
+  novedadesEtiqueta?: string;
+  catalogoTitulo?: string;
+  catalogoDescripcion?: string;
+  serviciosTitulo?: string;
+  serviciosDescripcion?: string;
+  menuInicio?: string;
+  menuNovedades?: string;
+  menuProductos?: string;
+  menuServicios?: string;
+  menuContacto?: string;
+}
+
+export interface DeletedFactoryProductEntry {
+  deletedAt: string;
+  dismissed?: boolean;
+}
 
 /**
  * Real-time subscription to discount coupons.
- * Seeds with initialCoupons if collection is empty.
+ * Allows having 0 coupons without auto-resetting or resurrecting deleted coupons.
  */
 export function subscribeCoupons(
   onUpdate: (coupons: Coupon[]) => void,
@@ -341,34 +379,52 @@ export function subscribeCoupons(
 ): () => void {
   const couponsRef = collection(db, COUPONS_COLLECTION);
 
-  // Broadcast initialCoupons immediately for instant render
-  onUpdate(initialCoupons);
-
   const unsubscribe = onSnapshot(
     couponsRef,
     async (snapshot) => {
-      if (snapshot.empty && !isSeedingCoupons) {
-        isSeedingCoupons = true;
-        try {
-          const batch = writeBatch(db);
-          for (const coup of initialCoupons) {
-            const coupDoc = doc(db, COUPONS_COLLECTION, coup.code.toUpperCase());
-            batch.set(coupDoc, {
-              ...coup,
-              code: coup.code.toUpperCase(),
-              updatedAt: new Date().toISOString()
-            });
+      // If snapshot is empty, check if initial seeding was already completed
+      if (snapshot.empty) {
+        const localSeeded = localStorage.getItem('laguna_coupons_seeded');
+        
+        // If never seeded before, check Firestore settings doc
+        if (!localSeeded && !isSeedingCoupons) {
+          try {
+            const stateSnap = await getDoc(doc(db, SETTINGS_COLLECTION, COUPONS_STATE_DOC));
+            if (!stateSnap.exists() || !stateSnap.data()?.initialized) {
+              // Very first bootstrap ever: seed initial coupons
+              isSeedingCoupons = true;
+              const batch = writeBatch(db);
+              for (const coup of initialCoupons) {
+                const coupDoc = doc(db, COUPONS_COLLECTION, coup.code.toUpperCase());
+                batch.set(coupDoc, {
+                  ...coup,
+                  code: coup.code.toUpperCase(),
+                  updatedAt: new Date().toISOString()
+                });
+              }
+              batch.set(doc(db, SETTINGS_COLLECTION, COUPONS_STATE_DOC), {
+                initialized: true,
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+              await batch.commit();
+              localStorage.setItem('laguna_coupons_seeded', 'true');
+              onUpdate(initialCoupons);
+              return;
+            }
+          } catch (e) {
+            console.warn('Error verificando estado de cupones:', e);
+          } finally {
+            isSeedingCoupons = false;
           }
-          await batch.commit();
-        } catch (e) {
-          console.warn('No se pudo sembrar cupones en Firestore:', e);
-        } finally {
-          isSeedingCoupons = false;
         }
-        onUpdate(initialCoupons);
+
+        // If it was already initialized or user deleted all coupons, keep list empty as desired!
+        onUpdate([]);
         return;
       }
 
+      // Snapshot has coupons
+      localStorage.setItem('laguna_coupons_seeded', 'true');
       const list: Coupon[] = [];
       snapshot.docs.forEach((docSnap) => {
         const data = docSnap.data();
@@ -387,15 +443,10 @@ export function subscribeCoupons(
         });
       });
 
-      if (list.length > 0) {
-        onUpdate(list);
-      } else {
-        onUpdate(initialCoupons);
-      }
+      onUpdate(list);
     },
     (err) => {
       console.warn('Error en suscripción de cupones Firestore:', err);
-      onUpdate(initialCoupons);
       if (onError) onError(err);
     }
   );
@@ -417,6 +468,15 @@ export async function saveCoupon(coupon: Coupon): Promise<void> {
     active: Boolean(coupon.active),
     updatedAt: new Date().toISOString()
   }), { merge: true });
+
+  // Mark initialized
+  localStorage.setItem('laguna_coupons_seeded', 'true');
+  try {
+    await setDoc(doc(db, SETTINGS_COLLECTION, COUPONS_STATE_DOC), {
+      initialized: true,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch {}
 }
 
 /**
@@ -426,6 +486,27 @@ export async function deleteCoupon(code: string): Promise<void> {
   const cleanCode = code.trim().toUpperCase();
   const couponDoc = doc(db, COUPONS_COLLECTION, cleanCode);
   await deleteDoc(couponDoc);
+  // Ensure we keep initialized flag so it doesn't auto-reset
+  localStorage.setItem('laguna_coupons_seeded', 'true');
+}
+
+/**
+ * Deletes ALL coupons from Firestore in a single batch operation.
+ * Leaves the coupon collection completely empty without auto-resetting.
+ */
+export async function deleteAllCoupons(): Promise<void> {
+  const couponsSnap = await getDocs(collection(db, COUPONS_COLLECTION));
+  const batch = writeBatch(db);
+  couponsSnap.docs.forEach((docSnap) => {
+    batch.delete(docSnap.ref);
+  });
+  // Record that coupons are intentionally empty
+  batch.set(doc(db, SETTINGS_COLLECTION, COUPONS_STATE_DOC), {
+    initialized: true,
+    emptyAt: new Date().toISOString()
+  }, { merge: true });
+  await batch.commit();
+  localStorage.setItem('laguna_coupons_seeded', 'true');
 }
 
 /**
@@ -441,7 +522,7 @@ export async function toggleCouponStatus(code: string, active: boolean): Promise
 }
 
 /**
- * Restores initial 5 coupons.
+ * Restores initial 5 coupons explicitly when requested by admin.
  */
 export async function restoreInitialCoupons(): Promise<void> {
   const batch = writeBatch(db);
@@ -453,7 +534,12 @@ export async function restoreInitialCoupons(): Promise<void> {
       updatedAt: new Date().toISOString()
     });
   }
+  batch.set(doc(db, SETTINGS_COLLECTION, COUPONS_STATE_DOC), {
+    initialized: true,
+    restoredAt: new Date().toISOString()
+  }, { merge: true });
   await batch.commit();
+  localStorage.setItem('laguna_coupons_seeded', 'true');
 }
 
 /**
@@ -781,3 +867,339 @@ export async function deleteRestorePoint(pointId: string): Promise<void> {
   saveLocalRestorePoints(localList.filter(p => p.id !== pointId));
 }
 
+/* ========================================================================= */
+/* DELETED FACTORY PRODUCTS (EXPIRATION & DISMISSAL)                         */
+/* ========================================================================= */
+
+const LOCAL_STORAGE_DELETED_FACTORY_KEY = 'laguna_deleted_factory_products';
+const LOCAL_STORAGE_EXPIRATION_DAYS_KEY = 'laguna_factory_expiration_days';
+
+/**
+ * Reads local cached deleted factory products.
+ */
+function getLocalDeletedFactory(): Record<string, DeletedFactoryProductEntry> {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_DELETED_FACTORY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalDeletedFactory(data: Record<string, DeletedFactoryProductEntry>): void {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_DELETED_FACTORY_KEY, JSON.stringify(data));
+  } catch {}
+}
+
+/**
+ * Records a factory product deletion with timestamp.
+ */
+export async function recordFactoryProductDeletion(productId: string): Promise<void> {
+  const isFactory = initialProducts.some(p => p.id === productId);
+  if (!isFactory) return;
+
+  const now = new Date().toISOString();
+  const current = getLocalDeletedFactory();
+  current[productId] = { deletedAt: now, dismissed: false };
+  saveLocalDeletedFactory(current);
+
+  try {
+    const docRef = doc(db, SETTINGS_COLLECTION, DELETED_FACTORY_DOC);
+    await setDoc(docRef, {
+      [productId]: { deletedAt: now, dismissed: false }
+    }, { merge: true });
+  } catch (e) {
+    console.warn('No se pudo guardar registro de producto de fábrica eliminado en Firestore:', e);
+  }
+}
+
+/**
+ * Dismisses a deleted factory product so it disappears immediately from the restore list.
+ */
+export async function dismissDeletedFactoryProduct(productId: string): Promise<void> {
+  const current = getLocalDeletedFactory();
+  if (current[productId]) {
+    current[productId].dismissed = true;
+  } else {
+    current[productId] = { deletedAt: new Date().toISOString(), dismissed: true };
+  }
+  saveLocalDeletedFactory(current);
+
+  try {
+    const docRef = doc(db, SETTINGS_COLLECTION, DELETED_FACTORY_DOC);
+    await setDoc(docRef, {
+      [productId]: { dismissed: true, dismissedAt: new Date().toISOString() }
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Error descartando producto de fábrica:', e);
+  }
+}
+
+/**
+ * Dismisses ALL deleted factory products at once.
+ */
+export async function dismissAllDeletedFactoryProducts(productIds: string[]): Promise<void> {
+  const current = getLocalDeletedFactory();
+  const payload: Record<string, any> = {};
+  const now = new Date().toISOString();
+
+  productIds.forEach((id) => {
+    current[id] = { deletedAt: current[id]?.deletedAt || now, dismissed: true };
+    payload[id] = { dismissed: true, dismissedAt: now };
+  });
+
+  saveLocalDeletedFactory(current);
+
+  try {
+    const docRef = doc(db, SETTINGS_COLLECTION, DELETED_FACTORY_DOC);
+    await setDoc(docRef, payload, { merge: true });
+  } catch (e) {
+    console.warn('Error descartando todos los productos de fábrica eliminados:', e);
+  }
+}
+
+/**
+ * Real-time subscription to deleted factory products map.
+ */
+export function subscribeDeletedFactoryProducts(
+  onUpdate: (data: Record<string, DeletedFactoryProductEntry>) => void
+): () => void {
+  const docRef = doc(db, SETTINGS_COLLECTION, DELETED_FACTORY_DOC);
+
+  // Send local cache first
+  onUpdate(getLocalDeletedFactory());
+
+  const unsubscribe = onSnapshot(docRef, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data() as Record<string, DeletedFactoryProductEntry>;
+      saveLocalDeletedFactory(data);
+      onUpdate(data);
+    } else {
+      onUpdate(getLocalDeletedFactory());
+    }
+  }, (err) => {
+    console.warn('Error escuchando deleted_factory_products:', err);
+    onUpdate(getLocalDeletedFactory());
+  });
+
+  return unsubscribe;
+}
+
+/**
+ * Saves expiration days setting (e.g. 3 or 5 days).
+ */
+export async function saveFactoryExpirationDays(days: number): Promise<void> {
+  const cleanDays = days === 5 ? 5 : 3;
+  localStorage.setItem(LOCAL_STORAGE_EXPIRATION_DAYS_KEY, String(cleanDays));
+  try {
+    await setDoc(doc(db, SETTINGS_COLLECTION, 'factory_expiration'), {
+      days: cleanDays,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch {}
+}
+
+/**
+ * Subscribes to expiration days preference (3 or 5 days).
+ */
+export function subscribeFactoryExpirationDays(onUpdate: (days: number) => void): () => void {
+  const localVal = Number(localStorage.getItem(LOCAL_STORAGE_EXPIRATION_DAYS_KEY));
+  onUpdate(localVal === 5 ? 5 : 3);
+
+  const docRef = doc(db, SETTINGS_COLLECTION, 'factory_expiration');
+  const unsubscribe = onSnapshot(docRef, (snap) => {
+    if (snap.exists() && typeof snap.data()?.days === 'number') {
+      const d = snap.data()?.days === 5 ? 5 : 3;
+      localStorage.setItem(LOCAL_STORAGE_EXPIRATION_DAYS_KEY, String(d));
+      onUpdate(d);
+    }
+  }, () => {});
+
+  return unsubscribe;
+}
+
+/* ========================================================================= */
+/* CATEGORIES / SECTIONS MANAGEMENT                                          */
+/* ========================================================================= */
+
+const LOCAL_STORAGE_CATEGORIES_KEY = 'laguna_catalog_categories';
+
+/**
+ * Reads local cached categories.
+ */
+export function getLocalCategories(): string[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
+    if (!raw) return defaultCatalogCategories;
+    const list = JSON.parse(raw);
+    return Array.isArray(list) && list.length > 0 ? list : defaultCatalogCategories;
+  } catch {
+    return defaultCatalogCategories;
+  }
+}
+
+/**
+ * Real-time subscription to catalog categories.
+ */
+export function subscribeCategories(onUpdate: (categories: string[]) => void): () => void {
+  const docRef = doc(db, SETTINGS_COLLECTION, CATEGORIES_DOC);
+
+  // Send cache immediately
+  onUpdate(getLocalCategories());
+
+  const unsubscribe = onSnapshot(docRef, async (snap) => {
+    if (snap.exists() && Array.isArray(snap.data()?.list) && snap.data()?.list.length > 0) {
+      const list = snap.data()?.list as string[];
+      localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(list));
+      onUpdate(list);
+    } else {
+      // If doc does not exist, seed default list
+      try {
+        await setDoc(docRef, {
+          list: defaultCatalogCategories,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch {}
+      onUpdate(defaultCatalogCategories);
+    }
+  }, (err) => {
+    console.warn('Error escuchando categorías:', err);
+    onUpdate(getLocalCategories());
+  });
+
+  return unsubscribe;
+}
+
+/**
+ * Saves updated list of categories.
+ */
+export async function saveCategories(categories: string[]): Promise<void> {
+  const cleanList = Array.from(new Set(categories.map(c => c.trim()).filter(Boolean)));
+  localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(cleanList));
+
+  const docRef = doc(db, SETTINGS_COLLECTION, CATEGORIES_DOC);
+  await setDoc(docRef, {
+    list: cleanList,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+/**
+ * Renames a category across all products in Firestore and in the categories list.
+ * Returns the number of affected products.
+ */
+export async function renameCategory(oldName: string, newName: string): Promise<number> {
+  const trimmedOld = oldName.trim();
+  const trimmedNew = newName.trim();
+
+  if (!trimmedOld || !trimmedNew || trimmedOld === trimmedNew) {
+    return 0;
+  }
+
+  // 1. Fetch products
+  const productsSnap = await getDocs(collection(db, PRODUCTS_COLLECTION));
+  const batch = writeBatch(db);
+  let updatedCount = 0;
+
+  productsSnap.docs.forEach((docSnap) => {
+    const data = docSnap.data();
+    if (data.category === trimmedOld) {
+      batch.set(docSnap.ref, {
+        category: trimmedNew,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      updatedCount++;
+    }
+  });
+
+  // 2. Update categories list in settings
+  const currentCats = getLocalCategories();
+  const newCatList = currentCats.map(c => c === trimmedOld ? trimmedNew : c);
+  if (!newCatList.includes(trimmedNew)) {
+    newCatList.push(trimmedNew);
+  }
+  const cleanNewCats = Array.from(new Set(newCatList.map(c => c.trim()).filter(Boolean)));
+
+  const catDoc = doc(db, SETTINGS_COLLECTION, CATEGORIES_DOC);
+  batch.set(catDoc, {
+    list: cleanNewCats,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+
+  await batch.commit();
+  localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(cleanNewCats));
+
+  return updatedCount;
+}
+
+/**
+ * Deletes an unused category from the list.
+ */
+export async function deleteCategory(categoryName: string): Promise<void> {
+  const trimmed = categoryName.trim();
+  const current = getLocalCategories();
+  const updated = current.filter(c => c !== trimmed);
+  await saveCategories(updated);
+}
+
+/* ========================================================================= */
+/* WEBSITE SECTIONS CONFIGURATION (TITLES & SUBTITLES)                       */
+/* ========================================================================= */
+
+const LOCAL_STORAGE_SECTIONS_KEY = 'laguna_site_sections_config';
+
+export function getLocalSectionsConfig(): SiteSectionsConfig {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_SECTIONS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Subscribes to custom section titles and descriptions.
+ */
+export function subscribeSiteSectionsConfig(onUpdate: (config: SiteSectionsConfig) => void): () => void {
+  const docRef = doc(db, SETTINGS_COLLECTION, SECTIONS_CONFIG_DOC);
+
+  // Send local cache immediately
+  onUpdate(getLocalSectionsConfig());
+
+  const unsubscribe = onSnapshot(docRef, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data() as SiteSectionsConfig;
+      localStorage.setItem(LOCAL_STORAGE_SECTIONS_KEY, JSON.stringify(data));
+      onUpdate(data);
+    } else {
+      onUpdate(getLocalSectionsConfig());
+    }
+  }, (err) => {
+    console.warn('Error escuchando configuración de secciones:', err);
+    onUpdate(getLocalSectionsConfig());
+  });
+
+  return unsubscribe;
+}
+
+/**
+ * Saves custom section titles and descriptions to Firestore.
+ */
+export async function saveSiteSectionsConfig(config: SiteSectionsConfig): Promise<void> {
+  localStorage.setItem(LOCAL_STORAGE_SECTIONS_KEY, JSON.stringify(config));
+  const docRef = doc(db, SETTINGS_COLLECTION, SECTIONS_CONFIG_DOC);
+  await setDoc(docRef, {
+    ...config,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
+}
+
+/**
+ * Resets site section titles back to initial factory values.
+ */
+export async function resetSiteSectionsConfig(): Promise<void> {
+  localStorage.removeItem(LOCAL_STORAGE_SECTIONS_KEY);
+  const docRef = doc(db, SETTINGS_COLLECTION, SECTIONS_CONFIG_DOC);
+  await deleteDoc(docRef).catch(() => {});
+}
