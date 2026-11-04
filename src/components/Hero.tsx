@@ -35,7 +35,7 @@ export function Hero() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-        <div className="pt-28 pb-16 md:pt-36 md:pb-24 flex flex-col items-center">
+        <div className="pt-24 pb-16 sm:pt-28 md:pt-32 md:pb-24 flex flex-col items-center">
           
           {/* Text Content */}
           <div className="w-full">

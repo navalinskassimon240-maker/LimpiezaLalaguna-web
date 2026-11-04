@@ -46,8 +46,17 @@ export function Header() {
 
   return (
     <header className="fixed top-0 w-full z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-sm transition-all duration-300">
+      {/* Top 15% OFF Promo Banner - Soft semi-transparent */}
+      <div className="bg-gradient-to-r from-emerald-50/90 via-blue-50/90 to-emerald-50/90 backdrop-blur-md text-emerald-950 text-[11px] sm:text-xs font-bold py-1 px-3 text-center flex items-center justify-center gap-1.5 border-b border-emerald-200/50 shadow-2xs">
+        <span className="bg-emerald-600 text-white font-black px-1.5 py-0.2 rounded-full text-[9px] uppercase tracking-wider shrink-0 shadow-xs">
+          15% OFF
+        </span>
+        <span className="font-extrabold text-slate-800">
+          15% de descuento en todo el catálogo
+        </span>
+      </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-14 sm:h-18">
           {/* Logo & Store Status */}
           <div className="flex items-center gap-2.5 sm:gap-4 shrink-1 min-w-0">
             <div className="flex items-center gap-2 sm:gap-3 text-left shrink-1 min-w-0">

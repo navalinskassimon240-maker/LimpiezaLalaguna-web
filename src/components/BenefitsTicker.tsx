@@ -20,6 +20,12 @@ interface BenefitItem {
 
 const BENEFITS: BenefitItem[] = [
   {
+    icon: <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />,
+    title: '¡15% DE DESCUENTO EN TODOS LOS PRODUCTOS!',
+    badge: '15% OFF',
+    badgeColor: 'bg-emerald-500 text-white border-emerald-400'
+  },
+  {
     icon: <Truck className="w-4 h-4 text-emerald-600 shrink-0" />,
     title: 'Envíos a Domicilio en el Día',
     badge: 'Rápido',
