@@ -320,6 +320,9 @@ export function subscribeAnnouncements(
 ): () => void {
   const ref = collection(db, ANNOUNCEMENTS_COLLECTION);
 
+  // Broadcast initial announcements immediately so UI never stays blank on slow connections
+  onUpdate(siteConfig.novedades.lista as AnnouncementItem[]);
+
   const unsubscribe = onSnapshot(
     ref,
     async (snapshot) => {
@@ -404,13 +407,17 @@ const SECTIONS_CONFIG_DOC = 'sections_config';
 export const defaultCatalogCategories = [
   'Combos y Promos',
   'Productos de Limpieza',
-  'Escobillón y Mopas',
+  'Escobillón- Cepillo- Secadores',
   'Papel',
   'Bolsas',
-  'Aromatizadores',
-  'Control de Plagas',
+  'Aromatizadores- Perfumina- Sahumerio',
+  'Insecticida-Lustra mueble- Ambiente',
   'Bazar y Decoración',
-  'Otros'
+  'Trapo piso- Rejillas- Alfombras',
+  'Cabo',
+  'Cestos- Fuentones- Baldes-Palas',
+  'Mopas- Barredores- Lampazo',
+  'Esponjas cocina- Esponjas baño'
 ];
 
 export interface SiteSectionsConfig {
@@ -441,6 +448,9 @@ export function subscribeCoupons(
   onError?: (error: Error) => void
 ): () => void {
   const couponsRef = collection(db, COUPONS_COLLECTION);
+
+  // Broadcast initial coupons immediately for zero-wait load times
+  onUpdate(initialCoupons);
 
   const unsubscribe = onSnapshot(
     couponsRef,

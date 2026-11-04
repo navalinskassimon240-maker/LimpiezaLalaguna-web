@@ -1,17 +1,34 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager,
+  doc, 
+  getDocFromServer 
+} from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 export { firebaseConfig };
 
-
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-export const db = firebaseConfig.firestoreDatabaseId 
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+let dbInstance;
+try {
+  dbInstance = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  }, firebaseConfig.firestoreDatabaseId || undefined);
+} catch (e) {
+  dbInstance = firebaseConfig.firestoreDatabaseId 
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+    : getFirestore(app);
+}
 
-// Test Firestore connection on boot
+export const db = dbInstance;
+
+// Test Firestore connection on boot asynchronously without blocking UI
 (async function testConnection() {
   try {
     await getDocFromServer(doc(db, '_connection_test', 'status'));
@@ -23,3 +40,4 @@ export const db = firebaseConfig.firestoreDatabaseId
 })();
 
 export default app;
+
