@@ -38,7 +38,7 @@ export const siteConfig = {
   // =======================================================================================
   marca: {
     // Nombre que aparece en la cabecera (dividido en 2 para poder darle colores distintos)
-    nombrePrincipal: "Limpieza",      // Parte 1 (en azul)
+    nombrePrincipal: "L",      // Parte 1 (en azul)
     nombreResaltado: "Lalaguna",      // Parte 2 (en verde esmeralda)
     
     // Letra o inicial que va dentro del ícono del logo (si no usas imagen)
@@ -48,7 +48,7 @@ export const siteConfig = {
     // Puedes colocar la ruta de una imagen dentro de la carpeta public (ej: "/IMG/logo.png" o "/img/logo.png")
     // o pegar la URL directa de internet (ej: "https://midominio.com/mi-logo.png").
     // Si lo dejas vacío (""), se usará la inicial letraIsotipo ("L").
-    logoUrl: "/IMG/logo2.png",
+    logoUrl: "/IMG/logo.png",
     
     // Eslogan corto o descripción de la marca
     eslogan: "Artículos de Limpieza, Químicos Sueltos y Perfumería",
@@ -59,7 +59,7 @@ export const siteConfig = {
   // =======================================================================================
   whatsapp: {
     // Número al que llegan todos los pedidos y consultas (sin espacios ni guiones)
-    numero: "5492241507532", 
+    numero: "2241613188", 
     
     // Alias de Mercado Pago, CBU o Cuenta Bancaria para transferencias
     aliasTransferencia: "LIMPIEZALALAGUNA.MP",
@@ -72,17 +72,17 @@ export const siteConfig = {
   // =======================================================================================
   contacto: {
     // Teléfono que se muestra visible en el pie de página
-    telefonoMostrar: "+54 9 2241 50-7532",
+    telefonoMostrar: "+54 9 2241 613188",
     
     // Correo electrónico de contacto
     email: "info@limpiezalalaguna.com",
     
     // Dirección física mostrada en el pie de página
-    direccionPiePagina1: "Garay 349",
+    direccionPiePagina1: "Calle Principal 123",
     direccionPiePagina2: "Chascomús, Buenos Aires",
     
     // Dirección exacta donde los clientes retiran su pedido cuando eligen "Retiro en el local"
-    direccionRetiroCarrito: "Garay 349, esq. Florencio Chappa (Chascomús)",
+    direccionRetiroCarrito: "Av. Siempre Viva 1234, Local 5 (Chascomús)",
     
     // Mensaje de ayuda para retiros
     notaRetiro: "Te avisaremos por WhatsApp en cuanto tu pedido esté empaquetado y listo para retirar.",
@@ -146,46 +146,45 @@ export const siteConfig = {
     // Lista de banners del carrusel (puedes editar, agregar o cambiar textos e imágenes)
     lista: [
       {
-        id: 'promo-15-off-general',
-        tag: '¡15% OFF EN TODO!',
-        tagColor: 'bg-gradient-to-r from-red-600 to-emerald-600 text-white font-black',
-        title: '15% de Descuento en Todos los Productos',
-        subtitle: 'Descuento automático del 15% aplicado en absolutamente todos los productos del catálogo.',
-        imageUrl: '/IMG/novedad3.png',
-        fallbackUrl: promoMiercolesImg,
-        whatsappMessage: '¡Hola! Quiero hacer un pedido aprovechando el 15% de descuento en todos los productos.',
-        ctaText: 'Ver Productos con Descuento'
-      },
-      {
         id: 'promo-miercoles',
         tag: '¡Promo Semanal Destacada!',
         tagColor: 'bg-emerald-600 text-white',
         title: 'Miércoles: 10% de Descuento',
         subtitle: 'Pagando en efectivo o transferencia bancaria en todas tus compras del día.',
-        imageUrl: '/IMG/novedad3.png',
+        imageUrl: '/IMG/promo-miercoles.png',
         fallbackUrl: promoMiercolesImg,
         whatsappMessage: '¡Hola! Quiero aprovechar la promo del 10% de descuento de los miércoles.',
         ctaText: 'Aprovechar Descuento'
       },
       {
-        id: 'envios',
-        tag: 'Envío Gratis',
-        tagColor: 'bg-pink-600 text-white',
-        title: '¡Envío Gratis en tu Compra!',
-        subtitle: 'Aprovechá el beneficio superando los $15.000.',
-        imageUrl: '/IMG/envios2.png',
-        whatsappMessage: '¡Hola! Quisiera realizar un pedido y aprovechar el envío gratis.',
-        ctaText: 'Hacer Pedido'
+        id: 'promo-combo-hogar',
+        tag: 'Super Ahorro',
+        tagColor: 'bg-blue-600 text-white',
+        title: 'Combos Ahorro x 10L y x 25L',
+        subtitle: 'Combo x 10L a $8.500 (Jabón + Suavizante) y Combo x 25L a $22.000 con 5 bidones incluidos.',
+        imageUrl: 'https://images.unsplash.com/photo-1585421514738-01798e348b17?auto=format&fit=crop&q=80&w=1400',
+        whatsappMessage: '¡Hola! Quisiera pedir los Combos Ahorro con bidones incluidos.',
+        ctaText: 'Consultar Combos'
       },
       {
-        id: 'mayoristas',
-        tag: 'Revendedores',
-        tagColor: 'bg-blue-600 text-white',
-        title: '¡Atención Revendedores!',
-        subtitle: 'Cloro a partir de 1000 LTS a un precio único.',
-        imageUrl: '/IMG/novedad4.png',
-        whatsappMessage: '¡Hola! Quisiera consultar por el precio único de Cloro a partir de 1000 litros para revendedores.',
-        ctaText: 'Consultar Precio'
+        id: 'promo-bidones',
+        tag: 'Mayor y Menor',
+        tagColor: 'bg-emerald-600 text-white',
+        title: 'Productos Sueltos y Bidones x 5 Lts',
+        subtitle: 'Variedad de artículos de limpieza y desinfección de primera calidad al mejor precio.',
+        imageUrl: 'https://images.unsplash.com/photo-1610557892470-55d9e80c0bce?auto=format&fit=crop&q=80&w=1400',
+        whatsappMessage: '¡Hola! Quería consultar por los bidones y productos de limpieza disponibles.',
+        ctaText: 'Ver Productos'
+      },
+      {
+        id: 'promo-aromas',
+        tag: 'Nuevos Ingresos',
+        tagColor: 'bg-purple-600 text-white',
+        title: 'Línea de Perfumería y Aromatización',
+        subtitle: 'Difusores de varillas, aerosoles textiles, fragancias ambientales y esencias para el hogar.',
+        imageUrl: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&q=80&w=1400',
+        whatsappMessage: '¡Hola! Quisiera consultar la lista de aromas y fragancias disponibles.',
+        ctaText: 'Consultar Fragancias'
       }
     ]
   },
@@ -330,60 +329,59 @@ export const siteConfig = {
         isOpen: false,
         shifts: []
       },
-      {
+       {
         dayName: 'Lunes',
         dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
       {
         dayName: 'Martes',
-        dayIndex: 2,
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
-      {
-        dayName: 'Miércoles',
-        dayIndex: 3,
+       {
+        dayName: 'Miercoles',
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
       {
         dayName: 'Jueves',
-        dayIndex: 4,
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
-      {
+       {
         dayName: 'Viernes',
-        dayIndex: 5,
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '08:30', close: '12:30' },
-          { open: '16:30', close: '20:30' }
+          { open: '08:00', close: '13:00' },
+          { open: '16:30', close: '19:30' }
         ]
       },
       {
-        dayName: 'Sábado',
-        dayIndex: 6,
+        dayName: 'Sabado',
+        dayIndex: 1,
         isOpen: true,
         shifts: [
-          { open: '09:00', close: '13:00' },
-          { open: '17:00', close: '20:30' }
+          { open: '09:00', close: '13:30' }
         ]
-      }
+      },
     ]
   },
 

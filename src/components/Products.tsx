@@ -42,17 +42,12 @@ export function Products() {
     triggerFlyToCart(e, product.imageUrl, product.name);
 
     if (isCombo) {
-      const rawPrice = product.options[0]?.price || product.basePrice;
       addToCart(product, {
         label: product.options[0]?.label || `Combo Completo (${product.includes?.join(' + ') || 'Pack'})`,
-        price: Math.round(rawPrice * 0.85)
+        price: product.basePrice
       }, 1);
     } else {
-      const rawOpt = product.options[0] || { label: 'Unidad', price: product.basePrice };
-      addToCart(product, {
-        ...rawOpt,
-        price: Math.round(rawOpt.price * 0.85)
-      }, 1);
+      addToCart(product, product.options[0] || { label: 'Unidad', price: product.basePrice }, 1);
     }
   };
 
@@ -237,15 +232,9 @@ export function Products() {
                         </div>
                       ) : null}
 
-                      {/* 15% OFF Discount Badge */}
-                      <div className="absolute top-2.5 right-2.5 z-20 bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white/30">
-                        <Sparkles className="w-2.5 h-2.5 text-yellow-200 shrink-0" />
-                        <span>15% OFF</span>
-                      </div>
-
                       {/* Out of stock badge */}
                       {product.outOfStock && (
-                        <div className="absolute top-2.5 right-20 z-20 bg-red-600/95 backdrop-blur-xs text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white/20">
+                        <div className="absolute top-2.5 right-2.5 z-20 bg-red-600/95 backdrop-blur-xs text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 border border-white/20">
                           <Ban className="w-3 h-3" />
                           <span>Sin Stock</span>
                         </div>
@@ -269,26 +258,21 @@ export function Products() {
                     </div>
                     
                     <div className="flex flex-col flex-grow relative z-10">
-                      <div className="flex justify-between items-start mb-2 gap-1">
-                        <h3 className={`text-base font-bold leading-tight pr-1 transition-colors ${
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className={`text-base font-bold leading-tight pr-2 transition-colors ${
                           isCombo ? 'text-slate-900 group-hover:text-emerald-700' : 'text-slate-900 group-hover:text-blue-700'
                         }`}>
                           {product.name}
                         </h3>
-                        <span className={`font-extrabold whitespace-nowrap px-2 py-1 rounded-lg shadow-sm border flex flex-col items-center leading-none shrink-0 ${
+                        <span className={`font-extrabold whitespace-nowrap px-2.5 py-1 rounded-lg shadow-sm border flex flex-col items-center leading-none shrink-0 ${
                           isCombo 
                             ? 'text-emerald-700 bg-emerald-50 border-emerald-200' 
                             : 'text-blue-600 bg-blue-50 border-blue-100/50'
                         }`}>
                           <span className="text-[9px] uppercase tracking-wider mb-0.5 opacity-70">
-                            {isCombo ? 'Total Pack' : '15% OFF'}
+                            {isCombo ? 'Total Pack' : 'Precio'}
                           </span>
-                          <span className="text-[10px] line-through text-slate-400 font-normal">
-                            ${product.basePrice.toLocaleString('es-AR')}
-                          </span>
-                          <span className="text-sm font-black text-emerald-600">
-                            ${Math.round(product.basePrice * 0.85).toLocaleString('es-AR')}
-                          </span>
+                          <span className="text-sm">${product.basePrice.toLocaleString('es-AR')}</span>
                         </span>
                       </div>
 
