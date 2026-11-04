@@ -5,9 +5,22 @@ import { X, ShoppingCart, Star, ShieldCheck, Truck, Package, Droplets, Box, Chec
 import { Product, ProductOption } from '../types';
 import { useCart } from '../context/CartContext';
 import { siteConfig } from '../data/config';
-import { createWhatsAppUrl } from '../utils/whatsapp';
 import { triggerFlyToCart } from './FlyToCart';
-import { triggerHaptic } from '../utils/haptics';
+
+function triggerHaptic(type: 'light' | 'medium' | 'success' | 'warning' = 'light') {
+  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+    try {
+      if (type === 'success') navigator.vibrate([12, 50, 20]);
+      else navigator.vibrate(10);
+    } catch {}
+  }
+}
+
+function createWhatsAppUrl(phone: string, text?: string): string {
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  const encodedText = text ? encodeURIComponent(text) : '';
+  return `https://wa.me/${cleanPhone}${encodedText ? `?text=${encodedText}` : ''}`;
+}
 
 interface ProductModalProps {
   product: Product | null;
@@ -93,11 +106,15 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
       // Add combo with unit price and comboCount as item quantity
       const comboOption: ProductOption = {
         label: product.options[0]?.label || `Combo Completo (${product.includes?.join(' + ') || 'Pack'})`,
-        price: product.basePrice
+        price: Math.round((product.options[0]?.price || product.basePrice) * 0.85)
       };
       addToCart(product, comboOption, comboCount);
     } else {
-      addToCart(product, selectedOption, 1);
+      const discountedOpt: ProductOption = {
+        ...selectedOption,
+        price: Math.round(selectedOption.price * 0.85)
+      };
+      addToCart(product, discountedOpt, 1);
     }
 
     setIsAdded(true);
@@ -210,10 +227,19 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                   {product.name}
                 </h2>
                 
-                <div className="text-2xl sm:text-3xl font-black text-blue-600 mb-3 flex items-baseline gap-2">
-                  ${currentPrice.toLocaleString('es-AR')}
-                  <span className="text-xs sm:text-sm font-medium text-slate-400">
-                    {isCombo ? `(${comboCount} ${comboCount === 1 ? 'pack' : 'packs'})` : `/ ${selectedOption.label}`}
+                <div className="mb-3 flex items-center gap-3 flex-wrap">
+                  <div className="text-2xl sm:text-3xl font-black text-emerald-600 flex items-baseline gap-2">
+                    <span className="text-sm sm:text-base font-normal text-slate-400 line-through">
+                      ${currentPrice.toLocaleString('es-AR')}
+                    </span>
+                    <span>${Math.round(currentPrice * 0.85).toLocaleString('es-AR')}</span>
+                    <span className="text-xs sm:text-sm font-medium text-slate-500">
+                      {isCombo ? `(${comboCount} ${comboCount === 1 ? 'pack' : 'packs'})` : `/ ${selectedOption.label}`}
+                    </span>
+                  </div>
+                  <span className="bg-gradient-to-r from-red-600 to-pink-600 text-white text-[10px] sm:text-xs font-black uppercase px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-yellow-200" />
+                    15% OFF Aplicado
                   </span>
                 </div>
 
@@ -284,6 +310,7 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                         <div className="flex flex-col gap-2">
                           {product.options.map((option) => {
                             const isSelected = selectedOption.label === option.label;
+                            const discOptPrice = Math.round(option.price * 0.85);
                             return (
                               <button
                                 key={option.label}
@@ -306,11 +333,16 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                                   </span>
                                 </div>
 
-                                <span className={`text-xs sm:text-sm font-black shrink-0 px-2.5 py-1 rounded-xl whitespace-nowrap ${
-                                  isSelected ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-800'
-                                }`}>
-                                  ${option.price.toLocaleString('es-AR')}
-                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="text-[10px] text-slate-400 line-through font-normal">
+                                    ${option.price.toLocaleString('es-AR')}
+                                  </span>
+                                  <span className={`text-xs sm:text-sm font-black px-2.5 py-1 rounded-xl whitespace-nowrap ${
+                                    isSelected ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  }`}>
+                                    ${discOptPrice.toLocaleString('es-AR')}
+                                  </span>
+                                </div>
                               </button>
                             );
                           })}
@@ -430,8 +462,8 @@ export function ProductModal({ product, isOpen, onClose }: ProductModalProps) {
                         <div className="flex items-center gap-2">
                           <ShoppingCart className="w-5 h-5" />
                           <span>{isCombo 
-                            ? `Añadir Combo ($${currentPrice.toLocaleString('es-AR')})` 
-                            : `Añadir "${selectedOption?.label || ''}" ($${currentPrice.toLocaleString('es-AR')})`}</span>
+                            ? `Añadir Combo ($${Math.round(currentPrice * 0.85).toLocaleString('es-AR')})` 
+                            : `Añadir "${selectedOption?.label || ''}" ($${Math.round(currentPrice * 0.85).toLocaleString('es-AR')})`}</span>
                         </div>
                       )}
                     </button>
